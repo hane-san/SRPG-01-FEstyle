@@ -71,13 +71,31 @@ function button(text,fn,cls=''){const b=document.createElement('button');b.textC
 function selected(){const u=s.units.find(a=>a.id===view.selected);return view.sortie&&u?view.sortieUnit:u;}
 function resetSelection(){Object.assign(view,{selected:null,dest:null,target:null,action:null,menu:false,route:[],invalid:false,attackError:null,dragging:false,destinationPress:false,moveArmed:false,sortie:false,sortieUnit:null});}
 function center(){return {x:(vp.scrollLeft+vp.clientWidth/2)/view.tile,y:(vp.scrollTop+vp.clientHeight/2)/view.tile};}
-function recenter(p){vp.scrollLeft=p.x*view.tile-vp.clientWidth/2;vp.scrollTop=p.y*view.tile-vp.clientHeight/2;}
+function recenter(p,warningVisit=false){if(!warningVisit)warningReturn=null;vp.scrollLeft=p.x*view.tile-vp.clientWidth/2;vp.scrollTop=p.y*view.tile-vp.clientHeight/2;updateWarningJump();}
 function fit(){lastSize={w:vp.clientWidth,h:vp.clientHeight};view.tile=Math.max(20,Math.floor(vp.clientWidth/s.map.w))*[1,1.4,1.9][zoom];$('zoomLabel').textContent=['全幅','×1.4','×1.9'][zoom];}
 function draw(){render(canvas,s,view);mini($('minimap'),s,vp,view.tile,view.sampleTheme);}
 // Announced cells can sit outside a phone viewport: the banner says so and a tap pans there (explicit navigation, no rule effect).
 function visibleTiles(){const f=$('forecast'),top=f&&!f.hidden?f.offsetHeight:0;return {x0:vp.scrollLeft/view.tile,x1:(vp.scrollLeft+vp.clientWidth)/view.tile,y0:(vp.scrollTop+top)/view.tile,y1:(vp.scrollTop+vp.clientHeight)/view.tile};}
-function updateWarningJump(){const f=$('forecast');if(!f)return;const focus=f.hidden?null:warningFocus(s.warnings,visibleTiles());f.dataset.jump=focus?'1':'';let hint=f.querySelector('.forecast-jump');if(focus?.offscreen){if(!hint){hint=document.createElement('span');hint.className='forecast-jump';f.append(hint);}hint.textContent=focus.kind==='cannon'?'照準は画面外 · タップで表示':'予告マスは画面外 · タップで表示';}else hint?.remove();}
-function jumpToWarning(){if(locked||view.dragging)return;const focus=warningFocus(s.warnings);if(!focus)return;recenter(focus);draw();updateWarningJump();}
+let warningReturn=null;
+const warningKey=()=>JSON.stringify([s.map.id,s.turn,s.warnings,zoom,vp.clientWidth,vp.clientHeight]);
+function updateWarningJump(){
+ const f=$('forecast');if(!f)return;
+ if(warningReturn?.key!==warningKey())warningReturn=null;
+ const focus=f.hidden?null:warningFocus(s.warnings,visibleTiles());
+ const active=!f.hidden&&!locked&&!view.dragging&&(!!warningReturn||!!focus?.offscreen);
+ f.dataset.jump=active?'1':'';f.tabIndex=active?0:-1;
+ if(active){f.setAttribute('role','button');f.setAttribute('aria-label',warningReturn?'予告確認前の位置へ戻る':focus.kind==='cannon'?'画面外の砲撃地点を表示':'画面外の予告地点を表示');}
+ else{f.setAttribute('role','status');f.removeAttribute('aria-label');}
+ f.querySelector('.forecast-jump,.forecast-return')?.remove();
+ if(warningReturn||focus?.offscreen){const hint=document.createElement('span');hint.className=warningReturn?'forecast-return':'forecast-jump';hint.textContent=warningReturn?'元の位置へ戻る':focus.kind==='cannon'?'照準は画面外 · タップで表示':'予告マスは画面外 · タップで表示';f.append(hint);}
+}
+function jumpToWarning(){
+ if(locked||view.dragging)return;
+ updateWarningJump();
+ if(warningReturn){const back=warningReturn;warningReturn=null;vp.scrollLeft=back.left;vp.scrollTop=back.top;}
+ else{const focus=warningFocus(s.warnings,visibleTiles());if(!focus?.offscreen)return;warningReturn={key:warningKey(),left:vp.scrollLeft,top:vp.scrollTop};recenter(focus,true);}
+ draw();updateWarningJump();
+}
 function refresh(){
  music.setScene(s.map.id,s.phase,s.status);
  $('turn').textContent=`T${s.turn}`;$('phaseName').textContent=s.status==='victory'?'勝利':s.status==='defeat'?'敗北':['','味方','敵軍','支援','戦場'][s.phase];
@@ -340,6 +358,7 @@ function setZoom(z){const p=center();zoom=Math.max(0,Math.min(2,z));fit();draw()
 $('zoomIn').onclick=()=>setZoom(zoom+1);$('zoomOut').onclick=()=>setZoom(zoom-1);
 function home(){const friends=E.alive(s,'ally'),a=selected()?.team==='ally'?selected():friends.find(u=>!u.acted)||friends[0],p=a||s.map.camp;if(p){recenter({x:p.x+.5,y:p.y+.5});mini($('minimap'),s,vp,view.tile);}}
 $('homeBtn').onclick=home;$('forecast').onclick=jumpToWarning;let miniFrame=null;vp.addEventListener('scroll',()=>{if(miniFrame===null)miniFrame=requestAnimationFrame(()=>{miniFrame=null;mini($('minimap'),s,vp,view.tile);placeOrders();updateWarningJump();});},{passive:true});
+$('forecast').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();jumpToWarning();}};
 function nextUnit(){const u=nextReady(s,view.selected);if(!u)return;selectUnit(u,true);recenter({x:u.x+.5,y:u.y+.5});draw();vp.focus({preventScroll:true});}
 $('nextUnit').onclick=nextUnit;
 // Keyboard navigation is explicit camera navigation, like the minimap or roster.
@@ -493,7 +512,7 @@ function showMenu(){if(locked)return;
  $('utility').append(button('この戦闘を再試行',()=>confirmRestart(s.map.id)),button('最新版を確認',async()=>{try{const r=await fetch(`./version.json?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const v=await r.json();if(v.version===RELEASE)modal(`<h2>最新版です</h2><p>現在 v${RELEASE}。</p>`);else{modal(`<h2>新しい版があります</h2><p>互換性のある保存は引き継ぎます。ルールが変わる更新では新規開始になる場合があります。</p><div id="update"></div>`);$('update').append(button('更新して再起動',()=>{location.href=`./?v=${Date.now()}`;},'primary wide'));}}catch{modal('<p>更新確認ができませんでした。接続を確かめてください。</p>');}}));
 }
 $('menuBtn').onclick=showMenu;
-function roster(){if(locked)return;modal('<h2>部隊表</h2><div id="rosterList"></div>');const list=$('rosterList');for(const u of s.units.filter(a=>a.team==='ally')){const p=document.createElement('p');const rosterButton=button(`${u.name} ${u.label}${u.alive?(u.deployed===false?' [予備]':u.acted?' [行動済]':' [未行動]'):''} · ${u.alive?`HP ${u.hp}/${u.maxHp} 残${u.charges}`:s.settings.mode==='classic'?'永久離脱':'撤退'}`,()=>{close();if(u.deployed===false){openDeployment();return;}selectUnit(u,true);vp.scrollTop=u.y*view.tile-vp.clientHeight/2;vp.scrollLeft=u.x*view.tile-vp.clientWidth/2;});rosterButton.disabled=!u.alive;p.append(rosterButton);list.append(p);}if(s.lost.length){const p=document.createElement('p');p.textContent=`連戦の離脱記録：${s.lost.join(', ')}`;list.append(p);}}
+function roster(){if(locked)return;modal('<h2>部隊表</h2><div id="rosterList"></div>');const list=$('rosterList');for(const u of s.units.filter(a=>a.team==='ally')){const p=document.createElement('p');const rosterButton=button(`${u.name} ${u.label}${u.alive?(u.deployed===false?' [予備]':u.acted?' [行動済]':' [未行動]'):''} · ${u.alive?`HP ${u.hp}/${u.maxHp} 残${u.charges}`:s.settings.mode==='classic'?'永久離脱':'撤退'}`,()=>{close();if(u.deployed===false){openDeployment();return;}warningReturn=null;selectUnit(u,true);vp.scrollTop=u.y*view.tile-vp.clientHeight/2;vp.scrollLeft=u.x*view.tile-vp.clientWidth/2;});rosterButton.disabled=!u.alive;p.append(rosterButton);list.append(p);}if(s.lost.length){const p=document.createElement('p');p.textContent=`連戦の離脱記録：${s.lost.join(', ')}`;list.append(p);}}
 $('rosterBtn').onclick=roster;
 $('logBtn').onclick=()=>{if(locked)return;modal(`<h2>戦闘記録</h2><p>T${s.turn} / 再命令 ${s.metrics.commands} / 支援発動 ${s.metrics.supports} / 支援不発 ${s.metrics.misfires} / 消費 ${s.metrics.charges}</p><div id="export"></div><div id="logs"></div>`);$('export').append(button('検証記録をコピー',async()=>{const report=JSON.stringify({release:RELEASE,map:s.map.id,settings:s.settings,campaign,metrics:s.metrics,units:s.units,log:s.log},null,2);try{await navigator.clipboard.writeText(report);$('export').textContent='コピーしました';}catch{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([report],{type:'application/json'}));a.download='srpg-playtest.json';a.textContent='検証記録JSONを保存';$('export').append(a);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}}));for(const line of [...s.log].reverse()){const p=document.createElement('div');p.className='log-line';p.textContent=line;$('logs').append(p);}};
 window.addEventListener('resize',()=>{const p={x:(vp.scrollLeft+lastSize.w/2)/view.tile,y:(vp.scrollTop+lastSize.h/2)/view.tile};refresh();recenter(p);});

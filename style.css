@@ -377,5 +377,8 @@ a{color:#e4c8f0}
 @media(prefers-reduced-motion:reduce){#app[data-thumb="left"] #moveUndo,#app[data-thumb="left"] .map-tools{transition:none}}
 /* Off-screen announced cells: the banner names it and a tap pans there; height stays within the existing 72px cap. */
 #forecast[data-jump="1"]{cursor:pointer}
+#forecast:not([hidden]){min-height:44px;box-sizing:border-box}
+#forecast:focus-visible{outline:2px solid #ffdf9d;outline-offset:-3px}
+#forecast .forecast-return{display:inline-block;margin-left:8px;font-weight:800;text-decoration:underline}
 #forecast .forecast-jump{display:inline-block;margin-left:8px;padding:0 6px;border:1px solid currentColor;border-radius:4px;font-size:12px;font-weight:800;white-space:nowrap}
 #forecast .forecast-jump::before{content:"◎ "}
