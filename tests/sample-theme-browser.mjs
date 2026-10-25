@@ -17,7 +17,7 @@ try{
   await page.evaluate(value=>localStorage.setItem('field-command-save-v1',value),raw);
   await page.goto(base+'/?sample=01&debug=1');
   await page.waitForFunction(()=>window.srpgDebug?.snapshot().map?.id===0);
-  assert.match((await page.locator('#objective').getAttribute('aria-label'))||'','勝利');
+  assert.match((await page.locator('#objective').getAttribute('aria-label'))||'',/勝利/);
   assert.equal((await page.evaluate(()=>window.srpgDebug.snapshot())).map.title,'01 外縁工業地帯');
   assert.equal(await page.evaluate(()=>localStorage.getItem('field-command-save-v1')),raw);
   await page.reload();
