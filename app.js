@@ -5,7 +5,7 @@ import {appendChapter,chronicleLines} from './chronicle.js?v=0.8.0-war43';
 import {RELEASE,SKILLS,PROMOTIONS,RULES,CLASS_ROLES} from './config.js?v=0.8.0-p3-26-sortie29-classes68';
 import {MAPS} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
-import {render,mini} from './render.js?v=0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79';
+import {render,mini} from './render.js?v=0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76';
 import {bindMapInput,createHoldLock} from './ui-input.js?v=0.8.0-issue24';
 import {readSave,writeSave} from './save.js?v=0.8.0-p3-26-save37-war43-classes68';
 import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
@@ -14,9 +14,25 @@ import {createMusic,buildTrack,SCORES,BONUS_SCORES,MUSIC_LIBRARY,trackNumber,ass
 import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48';
 import {DISPLAY_NAME} from './display-name.js?v=0.8.0-display-2fb0ebb2368b';
 const $=id=>document.getElementById(id),canvas=$('battlefield'),vp=$('mapViewport');
+// The preview is a separate, nonpersistent URL session. Normal saves are never read/written here.
+const SAMPLE_SCENES={
+ '01':{id:0,title:'01 外縁工業地帯',briefing:'世界観見た目サンプル。既存01と地形・部隊・数値・ルールは同一。配管と運河の工業幻想の見た目を試せます。'},
+ '04':{id:3,title:'04 三橋水路戦',briefing:'世界観見た目サンプル。既存04と地形・部隊・数値・ルールは同一。三つの橋と要塞運河の見た目を試せます。'}
+};
+const sampleCode=new URLSearchParams(location.search).get('sample');
+const sampleScene=Object.hasOwn(SAMPLE_SCENES,sampleCode)?SAMPLE_SCENES[sampleCode]:null;
+const sampleMode=!!sampleScene;
+function decoratePreview(state){
+ if(sampleScene&&state.map.id===sampleScene.id)state.map={...state.map,
+  title:sampleScene.title,subtitle:'工業幻想／世界観見た目試遊・本編未反映',
+  briefing:sampleScene.briefing+' '+state.map.briefing};
+ return state;
+}
+if(sampleMode){document.title=sampleScene.title+' — 世界観試遊';$('menuBtn').textContent='試遊';}
+
 let s,campaign=false,settings={mode:'classic',healing:'H1',enemyAttack:0},zoom=0,locked=false;
 let lastSize={w:0,h:0};
-let view={selected:null,dest:null,target:null,action:null,danger:false,tile:32,cursor:null};
+let view={selected:null,dest:null,target:null,action:null,danger:false,tile:32,cursor:null,sampleTheme:sampleMode?'industrial':null};
 let fast=false;try{fast=localStorage.getItem('field-command-fast')==='true';}catch{}
 const sound=createAudio(),music=createMusic();
 let battleCard=null,lastNotice=null,pendingUndo=null;
@@ -43,9 +59,9 @@ const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 const playback=createPlayback({getState:()=>s,setState:state=>{s=state;},view,draw,sound,isFast:()=>fast,isReduced:reduced,onCombat:presentCombat,onMessage:message=>{$('phaseFlash').textContent=message;$('phaseFlash').classList.add('visible');}});
 for(const event of ['pointerdown','keydown'])document.addEventListener(event,()=>{sound.unlock();music.unlock();},{capture:true,passive:true});
 const escapeHTML=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let stored=null;try{stored=readSave(localStorage,RELEASE,MAPS);}catch{/* storage may be disabled */}
-if(stored){s=stored.state;campaign=stored.campaign;settings=s.settings;}else s=E.createGame(0,settings);
-function save(state=s){try{writeSave(localStorage,RELEASE,state,campaign);}catch{}}
+let stored=null;try{if(!sampleMode)stored=readSave(localStorage,RELEASE,MAPS);}catch{/* storage may be disabled */}
+if(stored){s=stored.state;campaign=stored.campaign;settings=s.settings;}else s=decoratePreview(E.createGame(sampleScene?.id??0,settings));
+function save(state=s){if(sampleMode)return;try{writeSave(localStorage,RELEASE,state,campaign);}catch{}}
 function modal(html,canClose=true){music.stopPreview();$('modalBody').innerHTML=html;$('closeModal').hidden=!canClose;if(!$('modal').open)$('modal').showModal();$('modal').scrollTop=0;}
 function close(){music.stopPreview();$('modal').close();}
 $('modal').addEventListener('cancel',()=>music.stopPreview());
@@ -57,7 +73,7 @@ function resetSelection(){Object.assign(view,{selected:null,dest:null,target:nul
 function center(){return {x:(vp.scrollLeft+vp.clientWidth/2)/view.tile,y:(vp.scrollTop+vp.clientHeight/2)/view.tile};}
 function recenter(p){vp.scrollLeft=p.x*view.tile-vp.clientWidth/2;vp.scrollTop=p.y*view.tile-vp.clientHeight/2;}
 function fit(){lastSize={w:vp.clientWidth,h:vp.clientHeight};view.tile=Math.max(20,Math.floor(vp.clientWidth/s.map.w))*[1,1.4,1.9][zoom];$('zoomLabel').textContent=['全幅','×1.4','×1.9'][zoom];}
-function draw(){render(canvas,s,view);mini($('minimap'),s,vp,view.tile);}
+function draw(){render(canvas,s,view);mini($('minimap'),s,vp,view.tile,view.sampleTheme);}
 // Announced cells can sit outside a phone viewport: the banner says so and a tap pans there (explicit navigation, no rule effect).
 function visibleTiles(){const f=$('forecast'),top=f&&!f.hidden?f.offsetHeight:0;return {x0:vp.scrollLeft/view.tile,x1:(vp.scrollLeft+vp.clientWidth)/view.tile,y0:(vp.scrollTop+top)/view.tile,y1:(vp.scrollTop+vp.clientHeight)/view.tile};}
 function updateWarningJump(){const f=$('forecast');if(!f)return;const focus=f.hidden?null:warningFocus(s.warnings,visibleTiles());f.dataset.jump=focus?'1':'';let hint=f.querySelector('.forecast-jump');if(focus?.offscreen){if(!hint){hint=document.createElement('span');hint.className='forecast-jump';f.append(hint);}hint.textContent=focus.kind==='cannon'?'照準は画面外 · タップで表示':'予告マスは画面外 · タップで表示';}else hint?.remove();}
@@ -116,7 +132,7 @@ function panel(){
  const root=$('orders'),u=selected();root.innerHTML='';root.className=s.status!=='playing'?'result':u?'selected'+(u.team==='enemy'||u.acted?' readonly':!view.menu?' choosing':''):'idle';
  if(s.status!=='playing'){
   root.innerHTML=`<div class="result-title">${s.status==='victory'?'北城制圧':'敗北'} <small>T${s.turn} · 味方離脱 ${s.metrics.deaths.filter(d=>s.units.find(u=>u.id===d.id)?.team==='ally').length}</small></div>`;
-  const row=document.createElement('div');row.className='action-row';row.append(button('再試行',()=>confirmRestart(s.map.id)));if(s.status==='victory'&&s.map.id<2){if(campaign&&s.map.id===1)row.append(button('上級職の技能を選ぶ',promotionMenu));row.append(button(campaign?'次章へ（補充と昇格）':'次のマップ',()=>start(s.map.id+1,campaign,campaign?s.lost:[],campaign?s.specialties:{},campaign?appendChapter(s.chronicle,s):[]),'primary'));}if(campaign&&(s.chronicle?.length||s.status==='victory'))row.append(button('戦果記録',warRecord));root.append(row);return;
+  const row=document.createElement('div');row.className='action-row';row.append(button('再試行',()=>confirmRestart(s.map.id)));if(!sampleMode&&s.status==='victory'&&s.map.id<2){if(campaign&&s.map.id===1)row.append(button('上級職の技能を選ぶ',promotionMenu));row.append(button(campaign?'次章へ（補充と昇格）':'次のマップ',()=>start(s.map.id+1,campaign,campaign?s.lost:[],campaign?s.specialties:{},campaign?appendChapter(s.chronicle,s):[]),'primary'));}if(campaign&&(s.chronicle?.length||s.status==='victory'))row.append(button('戦果記録',warRecord));root.append(row);return;
  }
  if(!u){if(battleCard||lastNotice){renderReport(root);return;}if(locked){root.textContent='部隊が行動中…';return;}
    const hint=document.createElement('span');hint.textContent=openingHint();root.append(hint);
@@ -377,7 +393,7 @@ function warRecord(){
  const rows=chronicleLines(list).map(r=>`<li><strong>${escapeHTML(r.title)}</strong><br>${escapeHTML(r.summary)}<br><small>${escapeHTML(r.memory)}</small></li>`).join('');
  modal(`<h2>戦果記録</h2>${rows?`<ol class="war-record">${rows}</ol>`:'<p>まだ記録はありません。</p>'}<p class="war-record-note">勝ち方の記録です。結末や難易度は変わりません。</p>`);
 }
-function start(id,chain=false,lost=[],specialties={},chronicle=[]){pendingUndo=null;battleCard=null;lastNotice=null;s=E.createGame(id,settings,lost,{specialties,chronicle});campaign=chain;resetSelection();view.cursor=null;zoom=0;close();save();refresh();home();}
+function start(id,chain=false,lost=[],specialties={},chronicle=[]){pendingUndo=null;battleCard=null;lastNotice=null;s=decoratePreview(E.createGame(id,settings,lost,{specialties,chronicle}));campaign=chain;resetSelection();view.cursor=null;zoom=0;close();save();refresh();home();}
 function confirmRestart(id){modal('<h2>再試行</h2><p>このマップ開始時の部隊構成に戻ります。現在の戦闘記録は消えます。</p><div id="restartConfirm"></div>');const startLost=campaign?s.lost.filter(id=>!s.metrics.deaths.some(d=>d.id===id)):[];$('restartConfirm').append(button('再試行する',()=>{settings={...s.settings};start(id,campaign,startLost,s.specialties,s.chronicle||[]);},'danger wide'));}
 function selectSortie(u){
  const virtual=E.sortieUnit(s,u.id);
@@ -415,7 +431,23 @@ function promotionMenu(){
   section.append(row);root.append(section);
  }
 }
-function showMenu(){if(locked)return;modal(`<h2>戦場を選ぶ</h2><div id="maps"></div><div id="campaignStart"></div><details id="soundRoomDetails"><summary>♪ サウンドルーム（全${MUSIC_LIBRARY.length*2}曲）</summary><p class="hint">BGMがOFFでも試聴できます。曲を切り替えると短く音が切れ、選んだ曲が頭から流れます。戦場へ戻ると試聴を終了し、元のBGM設定へ戻ります。</p><p class="hint">曲ごとの固定番号です。例：『マップ03・味方 No.37／敵 No.42』と指定できます。番号は今後追加しても変更しません。</p><div id="soundRoomMapAssignments" class="sound-room-map-assignments"></div><div id="soundRoomList"></div><p id="soundRoomNow" role="status" aria-live="polite">曲を選んでください。</p><div class="action-row"><button id="soundRoomStop">試聴を停止</button></div></details><details id="settingsDetails"><summary>難易度・補給の設定</summary><div class="settings"><label>離脱の扱い<select id="mode"><option value="classic">クラシック（永久離脱）</option><option value="casual">カジュアル（次章復帰）</option></select></label><label>敵の攻撃<select id="difficulty"><option value="-1">練習 −1</option><option value="0">標準 ±0</option><option value="1">挑戦 ＋1</option></select></label></div><p class="hint">次に開始する戦闘へ適用。現在の戦闘は下の「戦場へ戻る」で続行できます。</p></details><details><summary>遊び方・勝敗と4フェーズ</summary><p>部隊を選んで、攻撃できない空きマスをタップすると移動して待機します。攻撃できる移動先は押したまま敵へスライドして対象を選びます。敵を選ばず離すと元に戻り、部隊自身や移動できないマスのタップでも選択を取り消せます。青い部隊を押したままスライドすると、指に合わせて経路の矢印が伸びます。離すと「攻撃・待機・戻る」。そのまま敵マスまで滑らせれば移動先を保って対象選択。攻撃／待機を一度押すと実行し、戻るは消費せず取消。射程内に複数の敵がいる場合は↻で切替。その場なら部隊をタップするだけ。何もない場所や青範囲外からのドラッグは地図移動、指を地図端へ寄せると追ってスクロールします。地図内の長押しではブラウザのメニューを開きません。</p><p>Ⅰ 味方行動 → Ⅱ 敵軍 → Ⅲ 味方の待機支援 → Ⅳ 予告イベント。通常兵種は射程が合えば反撃できます。砲兵・魔術師系はP1攻撃とP2反撃はできず、動かず待機した時だけⅢで砲撃・治療します。</p><p>HPは全員6。下級職は基本威力2、上級近接職は3、上級重装の軽減2（最低ダメージ1）。通常兵種の待機はP3効果なし。砲兵は静止待機でP3に敵1隊を砲撃、魔術師系は隣接味方1隊を2回復。P3専門兵の弾薬は最大2、効果があったときだけ1消費。本城から1マス以内でターンごとに1補給。弾薬0では通常待機。弓は射程2、シューターは射程3で威力1。</p><p>北城に入れば勝利。本陣があるマップは敵に入られると敗北。砲撃は予告の赤枠に固定${RULES.barrageDamage}、次のⅠで退避できます。増援は到着した次ターンから行動。出現地点の占有で到着を止められます。</p><p>森は移動コスト2。地形によるダメージ軽減はなし。重装兵の固有軽減のみ適用（最低1）。</p></details><details><summary>このゲーム・検証記録</summary><p>${escapeHTML(DISPLAY_NAME.about)} v${RELEASE}。オリジナルの戦術試作。命中100%、必殺なし。データは data.js、数値は config.js、戦闘は engine.js。戦闘記録から検証JSONを持ち出せます。</p><p>保存はこの端末内のみ。v0.8のHP6化はルール変更のため、旧戦闘データからの自動復元をしません。新規開始が必要です。</p><p><a href="https://github.com/hane-san/SRPG-01-FEstyle" target="_blank" rel="noopener">GitHubでソースを開く</a> · <a href="docs/balance.md" target="_blank">仕様とバランス検討</a></p></details><details><summary>操作と表示速度</summary><p>戦場をクリックしてキー操作：矢印でカーソル・移動先、Enterでメニュー、Aで攻撃を実行、Wで待機を実行、Escで取消、Nで次の未行動部隊。Tabでボタンを選んでEnterでも操作できます。効果音は上の「SE」で切替。最初のタップ後に鳴り、設定はこの端末に保存します。</p><div id="speedControl"></div><div id="thumbControl" class="thumb-control"></div><p class="hint">親指配置は「表示」ボタン群と移動の取り消しを左右入れ替えます。マップや命令欄は動かしません。</p></details><details id="audioDetails"><summary>音楽・効果音</summary><p>各戦場に味方用／敵・支援・戦場更新用のオリジナル曲。BGMは初期OFF、効果音は初期ON。音楽と効果音は別々に切り替えられます。</p><div id="musicControl"></div><label>BGM音量<input id="musicVolume" aria-label="BGM音量" type="range" min="0" max="100" step="1"></label><p id="musicTrack"></p></details><div id="utility" class="action-row"></div>`);
+function showMenu(){if(locked)return;
+ if(sampleMode){
+  modal('<h2>世界観の見た目試遊</h2><p>既存の戦闘システム・地形・配置を使った独立サンプルです。試遊中の戦果・離脱・操作は本編セーブに一切保存されません。ページを更新するとサンプルは最初からになります。</p><div id="previewChoices" class="sample-options"></div>');
+  const controls=$('previewChoices');
+  controls.append(button('↻ このサンプルを再試行',()=>start(sampleScene.id),'wide'));
+  controls.append(button('01 外縁工業地帯',()=>{location.assign('./?sample=01');},'wide'));
+  controls.append(button('04 三橋水路戦',()=>{location.assign('./?sample=04');},'wide'));
+  controls.append(button('本編へ戻る（保存済みの続き）',()=>{location.assign('./');},'primary wide'));
+  return;
+ }
+ modal(`<h2>戦場を選ぶ</h2><div id="maps"></div><div id="campaignStart"></div><details id="soundRoomDetails"><summary>♪ サウンドルーム（全${MUSIC_LIBRARY.length*2}曲）</summary><p class="hint">BGMがOFFでも試聴できます。曲を切り替えると短く音が切れ、選んだ曲が頭から流れます。戦場へ戻ると試聴を終了し、元のBGM設定へ戻ります。</p><p class="hint">曲ごとの固定番号です。例：『マップ03・味方 No.37／敵 No.42』と指定できます。番号は今後追加しても変更しません。</p><div id="soundRoomMapAssignments" class="sound-room-map-assignments"></div><div id="soundRoomList"></div><p id="soundRoomNow" role="status" aria-live="polite">曲を選んでください。</p><div class="action-row"><button id="soundRoomStop">試聴を停止</button></div></details><details id="settingsDetails"><summary>難易度・補給の設定</summary><div class="settings"><label>離脱の扱い<select id="mode"><option value="classic">クラシック（永久離脱）</option><option value="casual">カジュアル（次章復帰）</option></select></label><label>敵の攻撃<select id="difficulty"><option value="-1">練習 −1</option><option value="0">標準 ±0</option><option value="1">挑戦 ＋1</option></select></label></div><p class="hint">次に開始する戦闘へ適用。現在の戦闘は下の「戦場へ戻る」で続行できます。</p></details><details><summary>遊び方・勝敗と4フェーズ</summary><p>部隊を選んで、攻撃できない空きマスをタップすると移動して待機します。攻撃できる移動先は押したまま敵へスライドして対象を選びます。敵を選ばず離すと元に戻り、部隊自身や移動できないマスのタップでも選択を取り消せます。青い部隊を押したままスライドすると、指に合わせて経路の矢印が伸びます。離すと「攻撃・待機・戻る」。そのまま敵マスまで滑らせれば移動先を保って対象選択。攻撃／待機を一度押すと実行し、戻るは消費せず取消。射程内に複数の敵がいる場合は↻で切替。その場なら部隊をタップするだけ。何もない場所や青範囲外からのドラッグは地図移動、指を地図端へ寄せると追ってスクロールします。地図内の長押しではブラウザのメニューを開きません。</p><p>Ⅰ 味方行動 → Ⅱ 敵軍 → Ⅲ 味方の待機支援 → Ⅳ 予告イベント。通常兵種は射程が合えば反撃できます。砲兵・魔術師系はP1攻撃とP2反撃はできず、動かず待機した時だけⅢで砲撃・治療します。</p><p>HPは全員6。下級職は基本威力2、上級近接職は3、上級重装の軽減2（最低ダメージ1）。通常兵種の待機はP3効果なし。砲兵は静止待機でP3に敵1隊を砲撃、魔術師系は隣接味方1隊を2回復。P3専門兵の弾薬は最大2、効果があったときだけ1消費。本城から1マス以内でターンごとに1補給。弾薬0では通常待機。弓は射程2、シューターは射程3で威力1。</p><p>北城に入れば勝利。本陣があるマップは敵に入られると敗北。砲撃は予告の赤枠に固定${RULES.barrageDamage}、次のⅠで退避できます。増援は到着した次ターンから行動。出現地点の占有で到着を止められます。</p><p>森は移動コスト2。地形によるダメージ軽減はなし。重装兵の固有軽減のみ適用（最低1）。</p></details><details><summary>このゲーム・検証記録</summary><p>${escapeHTML(DISPLAY_NAME.about)} v${RELEASE}。オリジナルの戦術試作。命中100%、必殺なし。データは data.js、数値は config.js、戦闘は engine.js。戦闘記録から検証JSONを持ち出せます。</p><p>保存はこの端末内のみ。v0.8のHP6化はルール変更のため、旧戦闘データからの自動復元をしません。新規開始が必要です。</p><p><a href="https://github.com/hane-san/SRPG-01-FEstyle" target="_blank" rel="noopener">GitHubでソースを開く</a> · <a href="docs/balance.md" target="_blank">仕様とバランス検討</a></p></details><details><summary>操作と表示速度</summary><p>戦場をクリックしてキー操作：矢印でカーソル・移動先、Enterでメニュー、Aで攻撃を実行、Wで待機を実行、Escで取消、Nで次の未行動部隊。Tabでボタンを選んでEnterでも操作できます。効果音は上の「SE」で切替。最初のタップ後に鳴り、設定はこの端末に保存します。</p><div id="speedControl"></div><div id="thumbControl" class="thumb-control"></div><p class="hint">親指配置は「表示」ボタン群と移動の取り消しを左右入れ替えます。マップや命令欄は動かしません。</p></details><details id="audioDetails"><summary>音楽・効果音</summary><p>各戦場に味方用／敵・支援・戦場更新用のオリジナル曲。BGMは初期OFF、効果音は初期ON。音楽と効果音は別々に切り替えられます。</p><div id="musicControl"></div><label>BGM音量<input id="musicVolume" aria-label="BGM音量" type="range" min="0" max="100" step="1"></label><p id="musicTrack"></p></details><div id="utility" class="action-row"></div>`);
+ const preview=document.createElement('section');
+ preview.className='map-card sample-preview';
+ preview.innerHTML='<strong>🛠 世界観の見た目試遊（本編に未反映）</strong><p>既存の戦術のまま01・04を工業幻想の画風で遊べます。別ページで起動し、本編セーブには触れません。</p>';
+ preview.append(button('01 外縁工業地帯を試す',()=>{location.assign('./?sample=01');},'wide'),
+  button('04 三橋水路戦を試す',()=>{location.assign('./?sample=04');},'wide'));
+ $('maps').before(preview);
  const speedButton=button('',()=>{fast=!fast;try{localStorage.setItem('field-command-fast',String(fast));}catch{}updateSpeed();});function updateSpeed(){speedButton.textContent=fast?'進行速度：高速':'進行速度：通常（行動をゆっくり表示）';speedButton.setAttribute('aria-pressed',String(fast));}updateSpeed();$('speedControl').append(speedButton);
  const thumbButton=button('',()=>{thumb=thumb==='right'?'left':'right';try{localStorage.setItem('field-command-thumb-side',thumb);}catch{}applyThumb();updateThumb();},'subtle');
  thumbButton.id='thumbSideToggle';
@@ -469,5 +501,5 @@ window.addEventListener('resize',()=>{const p={x:(vp.scrollLeft+lastSize.w/2)/vi
 if(new URLSearchParams(location.search).has('debug'))window.srpgDebug={snapshot:()=>structuredClone(s),draft:()=>structuredClone(view),audio:()=>sound.snapshot(),music:()=>music.snapshot(),busy:()=>locked,select:id=>{const u=s.units.find(u=>u.id===id);if(u)selectUnit(u);},start:(id,opts={})=>{settings={...settings,...opts};start(id);}};
 // Layout is already measured by refresh; finish initial centering before accepting input.
 refresh();home();
-if(!stored)showMenu();
+if(!stored&&!sampleMode)showMenu();
 
