@@ -5,7 +5,7 @@ import {appendChapter,chronicleLines} from './chronicle.js?v=0.8.0-war43';
 import {RELEASE,SKILLS,PROMOTIONS,RULES,CLASS_ROLES} from './config.js?v=0.8.0-p3-26-sortie29-classes68';
 import {MAPS} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
-import {render,mini} from './render.js?v=0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
+import {render,mini} from './render.js?v=0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79';
 import {bindMapInput,createHoldLock} from './ui-input.js?v=0.8.0-issue24';
 import {readSave,writeSave} from './save.js?v=0.8.0-p3-26-save37-war43-classes68';
 import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
@@ -119,7 +119,7 @@ function panel(){
   const row=document.createElement('div');row.className='action-row';row.append(button('再試行',()=>confirmRestart(s.map.id)));if(s.status==='victory'&&s.map.id<2){if(campaign&&s.map.id===1)row.append(button('上級職の技能を選ぶ',promotionMenu));row.append(button(campaign?'次章へ（補充と昇格）':'次のマップ',()=>start(s.map.id+1,campaign,campaign?s.lost:[],campaign?s.specialties:{},campaign?appendChapter(s.chronicle,s):[]),'primary'));}if(campaign&&(s.chronicle?.length||s.status==='victory'))row.append(button('戦果記録',warRecord));root.append(row);return;
  }
  if(!u){if(battleCard||lastNotice){renderReport(root);return;}if(locked){root.textContent='部隊が行動中…';return;}
-   const hint=document.createElement('span');hint.textContent=E.alive(s,'ally').length?'部隊を動かすか、本城から追加出撃。':'全員本城で待機中。城をタップして出撃！';root.append(hint);
+   const hint=document.createElement('span');hint.textContent=openingHint();root.append(hint);
    const b=button(`出撃可 ${E.canDeploy(s)?E.deploymentLimit(s)-s.deployedThisTurn:0}隊 / 予備${E.reserves(s).length}隊`,openDeployment,'subtle');b.disabled=!E.canDeploy(s);root.append(b);return;}
  const dest=view.dest||u,targets=u.team==='ally'&&!u.acted?attackTargets(s,u,dest):[],target=targets.find(t=>t.id===view.target);
  const head=document.createElement('div');head.className='unit-head';head.innerHTML=`<strong>${escapeHTML(u.name)}${view.sortie?' · 出撃準備':''}</strong><span><b class='hp-value ${u.hp<=2?'hp-critical':''}'>HP ${u.hp}/${u.maxHp}</b> · ${escapeHTML(u.label)}${target?` → ${escapeHTML(target.name)}`:''}</span>`;root.append(head);
@@ -132,7 +132,7 @@ function panel(){
   const bar=(hp,max,kind)=>`<div class="hp-track ${kind}" aria-hidden="true"><i style="width:${Math.max(0,hp/max*100)}%"></i></div>`;
   pre.innerHTML=`<div class="forecast-side ally"><span>自HP ${u.hp} → ${p.allyAfter}</span>${bar(p.allyAfter,u.maxHp,'ally')}<small class="${p.allyAfter===0?'fatal':''}">反撃 ${p.counter}${p.allyAfter===0?' · ⚠ 離脱':''}</small></div><div class="forecast-side enemy"><span>敵HP ${target.hp} → ${p.enemyAfter}</span>${bar(p.enemyAfter,target.maxHp,'enemy')}<small>攻撃 ${p.damage}${p.enemyAfter===0?' · 撃破':u.type==='bow'?' · 隣接不可':u.type==='shooter'?' · 距離3は1':''}</small></div>`;
  }
- else{const command=E.waitCommand(u,dest);pre.textContent=(s.map.base&&E.dist(u,s.map.base)===0&&E.dist(dest,u)>0?'本陣から離れます ／ ':'')+(u.type==='bow'?'弓2マス・隣接不可 ／ ':u.type==='shooter'?'砲兵は移動せずP3砲撃 ／ ':u.skill==='heal'?'魔術師系は移動せずP3治療 ／ ':'')+(command==='heal'?'待機：P3回復・P2反撃なし':command==='support'?'待機：P3攻撃・P2反撃なし':'待機：P3なし');}
+ else{const command=E.waitCommand(u,dest);pre.textContent=(s.map.base&&E.dist(u,s.map.base)===0&&E.dist(dest,u)>0?'本陣から離れます ／ ':'')+(u.type==='bow'?'弓2マス・隣接不可 ／ ':u.type==='shooter'?'砲兵は移動せずP3砲撃 ／ ':u.skill==='heal'?'魔術師系は移動せずP3治療 ／ ':'')+(command==='heal'?'待機：P3回復・P2反撃なし':command==='support'?'待機：P3攻撃・P2反撃なし':u.maxCharges&&u.charges<=0&&E.dist(dest,u)===0?'待機：弾薬0・P3なし':'待機：P3なし');}
  root.append(pre);
  const row=document.createElement('div');row.className='command-row';
  if(u.team==='ally'&&!u.acted){
@@ -178,6 +178,18 @@ function openDraft(){
  const u=selected();if(!u||u.acted||u.team!=='ally')return;
  const targets=attackTargets(s,u,view.dest||u);if(view.attackError)view.target=null;else if(!targets.some(t=>t.id===view.target))view.target=targets[0]?.id||null;
  view.menu=true;view.invalid=false;view.action=null;refresh();
+}
+// Issue #81-J: map 01 teaches by one situational line in the idle dock, never a modal.
+// It only appears in the first three turns and only names the next useful gesture.
+function openingHint(){
+ const allies=E.alive(s,'ally');
+ if(!allies.length)return '全員本城で待機中。城をタップして出撃！';
+ if(s.map.id===0&&s.turn<=3){
+  const ready=allies.filter(u=>!u.acted),specialist=u=>u.type==='shooter'||u.skill==='heal';
+  if(ready.some(u=>!specialist(u)))return '部隊から敵へスライドして離すと、そのまま攻撃。';
+  if(ready.some(specialist))return '砲兵・魔術師は動かずに待機すると、P3で支援。';
+ }
+ return '部隊を動かすか、本城から追加出撃。';
 }
 function supportControls(root,u){const targets=E.supportTargets(s,u);const p=document.createElement('p');p.className='hint';p.textContent=`P3の現時点候補：${targets.length?targets.map(t=>u.skill==='heal'?`${t.name}＋${E.healAmount(s,u,t)}`:t.name).join('、'):'なし'}。敵移動・被害後に再判定。${u.type==='shooter'?'射程内の敵1隊。距離3は威力1':u.skill==='support'?'指定→撃破可能→攻撃力順':'隣接味方1隊を2回復'}。対象なしは消費0。`;root.append(p);
  root.append(button(u.spend?'消費許可：ON':'消費許可：温存',()=>{if(locked)return;pendingUndo=null;u.spend=!u.spend;save();refresh();unitDetails(u);}));
