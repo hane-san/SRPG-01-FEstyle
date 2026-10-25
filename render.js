@@ -2,7 +2,7 @@ import {weaponFrame,bossFracture,isBossUnit} from './weapon-fx.js?v=0.8.0-weapon
 import {impactFrame,landingFrame} from './combat-fx.js?v=0.8.0-fx39';
 import {tacticalRanges,attackTargets} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import {RULES} from './config.js?v=0.8.0-p3-26-classes68';
-import {alive,reachable,inRange,key,terrain,supportRange,movement as moveBudget,weatherAt} from './engine.js?v=0.8.0-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
+import {alive,reachable,inRange,key,terrain,supportRange,supportTargets,waitCommand,movement as moveBudget,weatherAt} from './engine.js?v=0.8.0-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 export const COLORS={'.':'#889968','=':'#baad7c',f:'#5c7957','~':'#688f9a','#':'#79827b','+':'#9c8157',c:'#8b9581',v:'#a69b71'};
 const PALETTES=[
  {'.':'#919e7b','=':'#beb792',f:'#627d68','~':'#769aab'},
@@ -35,7 +35,8 @@ function layers(canvas,s,view){
   }
   cache.rangeKey=rangeKey;cache.rangeBuilds++;
  }
- const boardKey=JSON.stringify([rangeKey,view.dest,!!view.menu,!!view.target,s.warnings,s.map.goal,s.map.base,s.map.camp,s.map.south,s.southTaken]);
+ // HP, ammo and focus decide the P3 candidate mark (Issue #79), so they invalidate the board.
+ const boardKey=JSON.stringify([rangeKey,view.dest,!!view.menu,!!view.target,!!view.sortie,selected?.charges,selected?.focus,s.units.map(u=>u.hp),s.warnings,s.map.goal,s.map.base,s.map.camp,s.map.south,s.southTaken]);
  if(cache.boardKey!==boardKey){
   if(!cache.board||cache.board.width!==cache.terrain.width||cache.board.height!==cache.terrain.height)cache.board=surface(s);
   const c=cache.board.getContext('2d');c.clearRect(0,0,cache.board.width,cache.board.height);c.drawImage(cache.terrain,0,0);
@@ -83,6 +84,15 @@ function paintTactics(c,s,view,selected,{moves,attacks,danger}){
    c.moveTo(x+1,y+9);c.lineTo(x+1,y+1);c.lineTo(x+9,y+1);
    c.moveTo(x+23,y+1);c.lineTo(x+31,y+1);c.lineTo(x+31,y+9);
   }c.stroke();
+ }
+ // Issue #79: a charged specialist standing still shows who its P3 would pick right now.
+ // It is today's candidate only; enemy moves and damage in P2 decide the real target.
+ if(selected?.team==='ally'&&!selected.acted&&!view.sortie&&view.dest&&waitCommand(selected,view.dest)){
+  for(const t of supportTargets(s,selected)){
+   const x=t.x*32,y=t.y*32,heal=selected.skill==='heal';
+   c.fillStyle=heal?'#2f7c63e6':'#6b4592e6';c.fillRect(x+1,y+21,17,10);
+   c.fillStyle='#fff2cd';c.font='bold 7px sans-serif';c.textAlign='center';c.fillText(heal?'P3+':'P3',x+9.5,y+29);
+  }
  }
  for(const w of s.warnings)for(const p of w.cells){c.strokeStyle=w.kind==='cannon'?'#ffdfb0':'#e0b9f2';c.lineWidth=2;c.strokeRect(p.x*32+2,p.y*32+2,28,28);c.fillStyle=w.kind==='cannon'?'#b34545bb':'#79568ebb';c.fillRect(p.x*32+3,p.y*32+3,26,8);c.fillStyle='#fff2cd';c.font='bold 7px sans-serif';c.textAlign='center';c.fillText(w.kind==='cannon'?`P4 −${RULES.barrageDamage}`:`増援T${w.turn}`,p.x*32+16,p.y*32+10);}
  if(s.map.camp&&s.map.tiles[s.map.camp.y]?.[s.map.camp.x]!=='c')castle(c,s.map.camp.x*32,s.map.camp.y*32);
