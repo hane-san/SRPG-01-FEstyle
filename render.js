@@ -1,3 +1,4 @@
+import {paintIndustrialTerrain,INDUSTRIAL_COLORS} from './sample-theme.js?v=sample76';
 import {weaponFrame,bossFracture,isBossUnit} from './weapon-fx.js?v=0.8.0-weapon48';
 import {impactFrame,landingFrame} from './combat-fx.js?v=0.8.0-fx39';
 import {tacticalRanges,attackTargets} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
@@ -19,8 +20,8 @@ export function renderStats(canvas){const c=caches.get(canvas);return c?{terrain
 function surface(s){const c=document.createElement('canvas');c.width=s.map.w*32;c.height=s.map.h*32;return c;}
 function layers(canvas,s,view){
  let cache=caches.get(canvas);if(!cache){cache={terrainBuilds:0,rangeBuilds:0,boardBuilds:0};caches.set(canvas,cache);}
- const mapKey=JSON.stringify([s.map.id,s.map.w,s.map.h,s.map.tiles]),weather=weatherAt(s);
- if(cache.mapKey!==mapKey){cache.terrain=surface(s);paintTerrain(cache.terrain.getContext('2d'),s);cache.mapKey=mapKey;cache.terrainBuilds++;}
+ const mapKey=JSON.stringify([s.map.id,s.map.w,s.map.h,s.map.tiles,view.sampleTheme||null]),weather=weatherAt(s);
+ if(cache.mapKey!==mapKey){cache.terrain=surface(s);(view.sampleTheme==='industrial'?paintIndustrialTerrain(cache.terrain.getContext('2d'),s.map):paintTerrain(cache.terrain.getContext('2d'),s));cache.mapKey=mapKey;cache.terrainBuilds++;}
  const rangeKey=JSON.stringify([mapKey,weather,view.selected,!!view.danger,s.units.map(u=>[u.id,u.team,u.alive,u.acted,u.x,u.y,u.move,u.range,u.ai,u.type,u.skill,u.deployed])]);
  const selected=view.sortie?view.sortieUnit:s.units.find(u=>u.id===view.selected);
  if(cache.rangeKey!==rangeKey){
@@ -369,5 +370,5 @@ function drawUnit(c,u){const x=u.x*32,y=u.y*32,blue=u.team==='ally',spent=blue&&
  if(spent){rect(26,3,4,4,'#f6e6b1');rect(27,4,2,2,ink);}
 }
 function cursor(c,p,color){const x=p.x*32,y=p.y*32;c.fillStyle='#273847';for(const [dx,dy]of [[0,0],[23,0],[0,23],[23,23]])c.fillRect(x+dx,y+dy,9,9);c.fillStyle=color;for(const [dx,dy,sx,sy]of [[1,1,1,1],[30,1,-1,1],[1,30,1,-1],[30,30,-1,-1]]){c.fillRect(x+dx+(sx<0?-7:0),y+dy,8,2);c.fillRect(x+dx,y+dy+(sy<0?-7:0),2,8);}}
-export function mini(canvas,s,viewport,tile){const c=canvas.getContext('2d');c.clearRect(0,0,64,120);const sx=64/s.map.w,sy=120/s.map.h;for(let y=0;y<s.map.h;y++)for(let x=0;x<s.map.w;x++){c.fillStyle=PALETTES[s.map.id]?.[s.map.tiles[y][x]]||COLORS[s.map.tiles[y][x]];c.fillRect(x*sx,y*sy,sx+.3,sy+.3);}for(const u of alive(s)){c.fillStyle=u.team==='ally'?'#ace4f3':'#b43947';c.fillRect(u.x*sx,u.y*sy,Math.max(sx,3),Math.max(sy,3));}c.strokeStyle='#fff0ad';c.lineWidth=1;c.strokeRect(viewport.scrollLeft/tile*sx,viewport.scrollTop/tile*sy,viewport.clientWidth/tile*sx,viewport.clientHeight/tile*sy);}
+export function mini(canvas,s,viewport,tile,theme=null){const c=canvas.getContext('2d');c.clearRect(0,0,64,120);const sx=64/s.map.w,sy=120/s.map.h;for(let y=0;y<s.map.h;y++)for(let x=0;x<s.map.w;x++){c.fillStyle=theme==='industrial'?INDUSTRIAL_COLORS[s.map.tiles[y][x]]:PALETTES[s.map.id]?.[s.map.tiles[y][x]]||COLORS[s.map.tiles[y][x]];c.fillRect(x*sx,y*sy,sx+.3,sy+.3);}for(const u of alive(s)){c.fillStyle=u.team==='ally'?'#ace4f3':'#b43947';c.fillRect(u.x*sx,u.y*sy,Math.max(sx,3),Math.max(sy,3));}c.strokeStyle='#fff0ad';c.lineWidth=1;c.strokeRect(viewport.scrollLeft/tile*sx,viewport.scrollTop/tile*sy,viewport.clientWidth/tile*sx,viewport.clientHeight/tile*sy);}
 
