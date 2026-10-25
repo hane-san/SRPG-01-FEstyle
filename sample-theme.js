@@ -96,6 +96,7 @@ function workshop(c,x,y,n){
  line(c,x+7,y+16,x+13,y+21,'#604c40');
  if(n%2===0){brick(c,x+23,y+4,5,6,'#34424b');}
 }
+export function paintIndustrialCamp(c,x,y){gate(c,x,y,3,true);}
 export function paintIndustrialTerrain(c,map){
  const is04=map.id===3;
  for(let y=0;y<map.h;y++)for(let x=0;x<map.w;x++){
