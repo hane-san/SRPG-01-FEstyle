@@ -4,6 +4,7 @@ import {createGame} from '../engine.js';
 import * as E from '../engine.js';
 import {mkdirSync} from 'node:fs';
 import {base,launch} from './browser-helpers.mjs';
+import {INDUSTRIAL_COLORS} from '../sample-theme.js';
 
 let browser;
 try{
@@ -27,11 +28,40 @@ try{
   Object.assign(original.state.units.find(u=>u.id==='a1'),{deployed:true,x:7,y:16,hp:4});
   const raw=JSON.stringify(original);
   await page.evaluate(value=>localStorage.setItem('field-command-save-v1',value),raw);
+  async function checkMinimap(industrial){
+   // Sample an actual terrain pixel away from units and the viewport outline.
+   const check=async label=>{
+    await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+    const result=await page.locator('#minimap').evaluate(c=>{
+     const s=window.srpgDebug.snapshot(),x=Math.floor(32/s.map.w),y=Math.floor(60/s.map.h);
+     return {map:s.map.id,tile:s.map.tiles[0][0],rgb:[...c.getContext('2d').getImageData(x,y,1,1).data].slice(0,3)};
+    });
+    // The saved main fixture is map02; its ordinary ground keeps its old ochre.
+    if(!industrial){assert.equal(result.map,1);assert.equal(result.tile,'.');}
+    const hex=industrial?INDUSTRIAL_COLORS[result.tile]:'#aa9d6e';
+    const expected=hex.match(/[a-f\d]{2}/gi).map(s=>parseInt(s,16));
+    assert.deepEqual(result.rgb,expected,`${industrial?'sample':'main'} ${label} minimap ${width}`);
+    assert.equal(await page.evaluate(()=>localStorage.getItem('field-command-save-v1')),raw);
+   };
+   const state=await page.evaluate(()=>window.srpgDebug.snapshot());
+   const camera=await page.locator('#mapViewport').evaluate(e=>[e.scrollLeft,e.scrollTop,e.clientWidth,e.clientHeight]);
+   await check('initial');
+   await page.locator('#mapViewport').evaluate(e=>e.scrollTop=e.scrollTop>50?e.scrollTop-50:50);
+   await check('scroll');
+   assert.deepEqual(await page.evaluate(()=>window.srpgDebug.snapshot()),state,'pan changes no battle state');
+   await page.locator('#toolsToggle').click();await page.locator('#homeBtn').click();
+   await check('home');
+   assert.deepEqual(await page.locator('#mapViewport').evaluate(e=>[e.clientWidth,e.clientHeight]),camera.slice(2),'home preserves map geometry');
+   await page.locator('#zoomIn').click();await check('zoom');
+   await page.locator('#zoomOut').click();await check('zoom back');
+   await page.locator('#toolsToggle').click();
+  }
   await page.goto(base+'/?sample=01&debug=1');
   await page.waitForFunction(()=>window.srpgDebug?.snapshot().map?.id===0);
   assert.match((await page.locator('#objective').getAttribute('aria-label'))||'',/勝利/);
   assert.equal((await page.evaluate(()=>window.srpgDebug.snapshot())).map.title,'01 外縁工業地帯');
   assert.equal(await page.evaluate(()=>localStorage.getItem('field-command-save-v1')),raw);
+  await checkMinimap(true);
   async function actInSample(){
    const before=await page.evaluate(()=>window.srpgDebug.snapshot());
    await page.locator('#orders button').filter({hasText:'出撃'}).click();
@@ -56,6 +86,7 @@ try{
    assert.equal(await page.evaluate(()=>localStorage.getItem('field-command-save-v1')),raw,'commands and turn resolution must not overwrite campaign');
   }
   await actInSample();
+  await checkMinimap(true);
   await page.screenshot({path:`test-results/sample01-${width}.png`});
   await page.reload();
   await page.waitForFunction(()=>window.srpgDebug?.snapshot().map?.id===0);
@@ -66,7 +97,9 @@ try{
   await page.waitForFunction(()=>window.srpgDebug?.snapshot().map?.id===3);
   assert.equal((await page.evaluate(()=>window.srpgDebug.snapshot())).map.title,'04 三橋水路戦');
   assert.equal(await page.evaluate(()=>localStorage.getItem('field-command-save-v1')),raw);
+  await checkMinimap(true);
   await actInSample();
+  await checkMinimap(true);
   await page.screenshot({path:`test-results/sample04-${width}.png`});
   await page.locator('#menuBtn').click();
   await page.getByRole('button',{name:/このサンプルを再試行/}).click();
@@ -77,6 +110,7 @@ try{
   await page.waitForFunction(()=>window.srpgDebug?.snapshot().map?.id===1);
   assert.deepEqual(await page.evaluate(()=>window.srpgDebug.snapshot()),original.state,'original campaign progress is restored');
   assert.equal(await page.evaluate(()=>localStorage.getItem('field-command-save-v1')),raw);
+  await checkMinimap(false);
   assert.deepEqual(errors,[]);
   await context.close();
  }
