@@ -2,7 +2,7 @@
 
 This is the canonical `hane-san/SRPG-01-FEstyle` repository (formerly `hane-san/SRPG`). Do not modify the separate Nagi island game.
 
-**Current v0.8.0 rules supersede v0.7 examples below:** read [docs/hp6-campaign-design.md](docs/hp6-campaign-design.md) first. The P3 specialist experiment on branch `feat/p3-specialists-26` is documented in [docs/p3-specialists-playtest.md](docs/p3-specialists-playtest.md); it supersedes only the former all-class P3 stance while under review. Main HP6 branch changes intentionally replace earlier shooter/healer/attrition contracts. Finale narrative is documentation only, not implemented.
+**Current v0.8.0 rules supersede v0.7 examples below:** read [docs/hp6-campaign-design.md](docs/hp6-campaign-design.md) first, then [docs/p3-specialists-playtest.md](docs/p3-specialists-playtest.md). P3 specialists and the all-reserve castle opening are integrated into main; the old all-class P3 stance and initial two deployed allies are historical rules. Main HP6 branch changes intentionally replace earlier shooter/healer/attrition contracts. Finale narrative is documentation only, not implemented.
 
 Shared setup / handoff: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Current findings: [docs/input-performance-0.7.0.md](docs/input-performance-0.7.0.md). Next work: [docs/ROADMAP.md](docs/ROADMAP.md). Claude Code imports this file from `CLAUDE.md`; keep one rules contract.
 
@@ -31,6 +31,8 @@ The human producer wants ideas thrown in at lunch to be playable on GitHub Pages
 - Collapse legacy healer/medic types into mage while retaining all nine slots, two cavalry and **three P3 healer slots**. Teo (a8) stays a mage after the collapse; do not assign a spear to the existing roster until a follow-up balancing decision. Legacy saves must preserve healer supplies and battle progress.
 - Preserve current six maps, enemy IDs/positions/types/AI, existing numeric balance, HP6, sortie/cap/P1-P4, P3 static heal/artillery, progress and save key. Only spear's +1 deterministic damage vs horse is the first small combat experiment. Do **not** opportunistically add bandit mobs or rebalance maps here.
 - **Balance is carried forward now and reevaluated later.** An early Teo-to-spear trial broke multiple historical map outcome tests, so the roster change was reverted; spear anti-cavalry exists as a unit-tested rule only, not an active campaign unit. Full specification: [docs/base-classes-68.md](docs/base-classes-68.md).
+
+**Later adopted limited trials (#71/#72, integrated by PR #75):** map01 enemy `e1` is a bandit, map04 allied reserve `aux-shield` is a spear, and map06 enemy `extra-5-0-2` is a spear. These three placements supersede the original #68 no-placement restriction only for those slots. The named nine-person roster, three mage healers and two cavalry remain unchanged. Further placements, roster exchanges and raid targeting are still separate decisions; #70 remains a proposal. See [the audit and remaining work](docs/issues-pr-audit-20261026.md).
 
 ## Shared AI development contract
 - Scope work to this repository and the approved issue. The human producer decides game specifications, playtest acceptance and integration into main.
@@ -66,10 +68,10 @@ The human producer wants ideas thrown in at lunch to be playable on GitHub Pages
 - `save.js`: optional local storage, validation, P1/finished-state restore.
 - Read `docs/balance.md` before changing balance; preserve open hypotheses rather than calling them resolved.
 
-## Issue #29 castle-opening experiment (not on main)
+## Issue #29 castle opening (integrated into main)
 - All allied characters begin in the castle reserve; zero on-board allies at map start. Players tap castle, choose the glyph/name, and gesture from the castle to their destination. Turn 1 permits two voluntary sorties; later turns permit one, board maximum remains five. No resource, state, or save changes before command validation.
 - Only committed `deployAndAct` emits a `deploy` observer with the opening line; playback reveals the actor at the gate, sounds two short metallic clanks, shows a one-line subtitle, and *then* replays movement/combat. Disable/shorten animation in Fast/Reduced Motion modes, preserve input lock and save atomicity. The actual line is a provisional plain string, not spoken audio.
-- Existing P3 specialist rules from PR #27 still apply. PR #31 is stacked on that branch and must not be merged independently into main.
+- Existing P3 specialist rules from PR #27 still apply. PR #31 was originally stacked on that branch; the combined work is now in main through PR #33. Do not reapply the historical branches.
 - Historical 2-ally placement tests can seed old positions explicitly; production `createGame` must start with no deployed ally.
 
 ## Invariants

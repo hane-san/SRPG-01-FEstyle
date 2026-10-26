@@ -8,7 +8,8 @@
 | 資料 | 内容・扱い |
 |---|---|
 | [HP6・出撃・ロスト仕様](hp6-campaign-design.md) | v0.8.0の基礎ルール・予備・帰還・ロスト・保存。物語の節は未実装と明記されている |
-| [P3専門職化・試遊仕様](p3-specialists-playtest.md) | Issue #26の実験ブランチで旧・全兵種P3支援を置換。main採否は未確定 |
+| [P3専門職化・試遊仕様](p3-specialists-playtest.md) | Issue #26/#29→PR #33でmain統合済み。専門職P3と全軍予備開始が現行仕様 |
+| [Issue・PR監査と残件](issues-pr-audit-20261026.md) | 2026-10-26時点の10件のopen Issue、統合済みPR、検証結果、具体的な残件 |
 | [README](../README.md) | 現在の遊び方、公開URL、実装範囲 |
 | [AGENTS](../AGENTS.md) | 全AIの開発契約、ゲーム固有の不変条件、技術境界 |
 | [開発手順](DEVELOPMENT.md) | Issue・作業ブランチ・PR・CI・監査・人間承認 |

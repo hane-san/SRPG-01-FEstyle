@@ -36,8 +36,8 @@ function layers(canvas,s,view){
   }
   cache.rangeKey=rangeKey;cache.rangeBuilds++;
  }
- // HP, ammo and focus decide the P3 candidate mark (Issue #79), so they invalidate the board.
- const boardKey=JSON.stringify([rangeKey,view.dest,!!view.menu,!!view.target,!!view.sortie,selected?.charges,selected?.focus,s.units.map(u=>u.hp),s.warnings,s.map.goal,s.map.base,s.map.camp,s.map.south,s.southTaken]);
+ // HP, ammo, permission and focus decide the P3 mark (Issue #79) and invalidate the board.
+ const boardKey=JSON.stringify([rangeKey,view.dest,!!view.menu,!!view.target,!!view.sortie,selected?.charges,selected?.spend,selected?.focus,s.units.map(u=>u.hp),s.warnings,s.map.goal,s.map.base,s.map.camp,s.map.south,s.southTaken]);
  if(cache.boardKey!==boardKey){
   if(!cache.board||cache.board.width!==cache.terrain.width||cache.board.height!==cache.terrain.height)cache.board=surface(s);
   const c=cache.board.getContext('2d');c.clearRect(0,0,cache.board.width,cache.board.height);c.drawImage(cache.terrain,0,0);
@@ -88,7 +88,7 @@ function paintTactics(c,s,view,selected,{moves,attacks,danger}){
  }
  // Issue #79: a charged specialist standing still shows who its P3 would pick right now.
  // It is today's candidate only; enemy moves and damage in P2 decide the real target.
- if(selected?.team==='ally'&&!selected.acted&&!view.sortie&&view.dest&&waitCommand(selected,view.dest)){
+ if(selected?.team==='ally'&&!selected.acted&&selected.spend&&!view.sortie&&view.dest&&waitCommand(selected,view.dest)){
   for(const t of supportTargets(s,selected)){
    const x=t.x*32,y=t.y*32,heal=selected.skill==='heal';
    c.fillStyle=heal?'#2f7c63e6':'#6b4592e6';c.fillRect(x+1,y+21,17,10);
