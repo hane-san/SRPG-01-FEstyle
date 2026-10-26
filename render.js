@@ -36,7 +36,7 @@ function layers(canvas,s,view){
   }
   cache.rangeKey=rangeKey;cache.rangeBuilds++;
  }
- // HP, ammo and focus decide the P3 candidate mark (Issue #79), so they invalidate the board.
+ // HP, ammo, permission and focus decide the P3 mark (Issue #79) and invalidate the board.
  const boardKey=JSON.stringify([rangeKey,view.dest,!!view.menu,!!view.target,!!view.sortie,selected?.charges,selected?.spend,selected?.focus,s.units.map(u=>u.hp),s.warnings,s.map.goal,s.map.base,s.map.camp,s.map.south,s.southTaken]);
  if(cache.boardKey!==boardKey){
   if(!cache.board||cache.board.width!==cache.terrain.width||cache.board.height!==cache.terrain.height)cache.board=surface(s);
