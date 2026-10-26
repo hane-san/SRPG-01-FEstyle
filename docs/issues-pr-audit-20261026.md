@@ -6,7 +6,7 @@
 - 現在の正本：`hane-san/SRPG-01-FEstyle`。旧`SRPG`のoriginはリダイレクト先を取得できる。改名・remote書換えはしない。
 - GitHub公開画面のopen Issueは**10件・全1ページ**、open PRは**0件**。本文・全コメント・ラベル・親子の依存を取得して下表と照合。GitのPR参照には閉鎖済みのものも残るので、参照の存在だけでopenと判断しない。
 - Git取得、コード差分、既存テスト、採否記録を照合。直近の統合PR #83/#84/#86を重点確認。初期PR #5はmerged、意図的なCI失敗検査PR #14はclosedであり、取り込み残しではない。
-- GitHub APIは環境の通信制限で403。公開Web画面で確認した事実と、APIで未確認の権限・状態を区別する。
+- 初回はGitHub APIが通信制限で403だったため公開Webを使用。その後設定反映による接続復旧を確認し、APIでもopen Issue 10件・既存open PR 0件、取得/更新権限を再確認した。監査・修正は[PR #87](https://github.com/hane-san/SRPG-01-FEstyle/pull/87)として作成。既存のPR数と今回作成したPRを混同しない。
 
 ## 全open Issueの採否と実装状態
 
@@ -43,7 +43,7 @@
 | [#84](https://github.com/hane-san/SRPG-01-FEstyle/pull/84) `2d682b2118dd5a3964251a0068f9cb4138854400` | 01/04の工業幻想は本編と独立した非保存セッション。装飾だけで地形/勝敗を変えず、本編保存→試遊→再読込/再試行→本編復帰の回帰を確認。作品全体の世界観採用と混同しない |
 | [#86](https://github.com/hane-san/SRPG-01-FEstyle/pull/86) `7264874c469a166f388bddd77566884f2d8e4ae4` | 画面外予告と元カメラの往復。ズーム/画面寸法/別ナビゲーションで戻り先を失効し、指保持/演出中に移動しない。既存の4画面回帰を実行 |
 
-基準mainの[Actions 40245177040](https://github.com/hane-san/SRPG-01-FEstyle/actions/runs/40245177040)と[Pages 40245176480](https://github.com/hane-san/SRPG-01-FEstyle/actions/runs/40245176480)は、公開Web画面で**対象be86edc・Success**を確認。これは新しい監査ブランチのCI結果ではない。Pages URLへの直接取得は通信制限で403のため、この実行で公開内容が一致したとは主張しない。
+基準mainの[Actions 40245177040](https://github.com/hane-san/SRPG-01-FEstyle/actions/runs/40245177040)と[Pages 40245176480](https://github.com/hane-san/SRPG-01-FEstyle/actions/runs/40245176480)は、公開Web画面で**対象be86edc・Success**を確認。これは新しい監査ブランチのCI結果ではない。Pages URLは初回403だったが、設定反映後にTLS検証を維持した直接取得で200を確認。新しいPRの公開結果はPR #87で別途追跡する。
 
 ## マップの再計測
 
@@ -74,7 +74,9 @@
 
 ## 反映と残る制約
 
-監査ブランチの修正・テスト・この記録はPRでレビューできる形に残す。GitHub APIとPagesの必要接続先`api.github.com`・`hane-san.github.io`を既存設定に追加するドラフトは保存済み。保存だけでは実行環境に反映されないため、API利用・PR作成・新headのCI/統合・公開確認は反映後に行う。現時点では新しい変更のmain統合・Pages反映を完了扱いにしない。
+監査ブランチの修正・テスト・この記録はPR #87でレビューできる形にした。GitHub APIとPagesの必要接続先`api.github.com`・`hane-san.github.io`を追加する設定ドラフトは保存済み。その後、実際のAPI取得とPages取得も成功した。設定保存と通信成功は別々の証拠として扱う。
+
+今回の「監査・採用・反映」の手動依頼に基づき、この修正PRを最終headのrules/browser成功・最新mainとの競合なし・holdなし・自己確認BLOCKなしの条件で通常mergeへ進める。恒久の昼ラン/夜間/役割設定は変更しない。レビューのApprove、GitHub auto-merge、main直接push、force-pushは行わない。完了したCI・統合SHA・Pagesの結果はPR #87の記録を正本とし、未完了の親Issueは閉じない。
 
 未検証：iPhone Safari/WebKit実機、実耳、端末での音声出力遅延、人間による難度・面白さ、今回追加した修正の独立監査。既存PRの検証と、自分で書いた修正の自己確認は分ける。
 
