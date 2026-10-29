@@ -74,3 +74,60 @@ export function createHoldLock(delay=200,onArm=()=>{}){
  };
  return {enter,reset,get armed(){return armed;},get cell(){return cell;}};
 }
+
+// Start on a reserve button, continue on the battlefield with the same finger.
+// A short tap remains the existing button action. The engine is touched only by
+// the returned map interaction's end(), after an in-viewport release.
+export function bindReserveInput(root,viewport,begin){
+ let active=null,suppressClick=false,edgeFrame=null;const pointers=new Set();
+ const stop=()=>{if(edgeFrame!==null)cancelAnimationFrame(edgeFrame);edgeFrame=null;};
+ const cancel=()=>{stop();const a=active;active=null;if(a?.interaction){suppressClick=true;a.interaction.cancel();}};
+ const edge=()=>{
+  edgeFrame=null;const a=active;if(!a?.interaction)return;
+  const r=viewport.getBoundingClientRect();
+  if(a.x>=r.left&&a.x<r.right&&a.y>=r.top&&a.y<r.bottom){
+   const velocity=(n,min,max)=>n<min+28?-Math.min(8,(min+28-n)*.24):n>max-28?Math.min(8,(n-max+28)*.24):0;
+   const left=viewport.scrollLeft,top=viewport.scrollTop;
+   viewport.scrollLeft+=velocity(a.x,r.left,r.right);viewport.scrollTop+=velocity(a.y,r.top,r.bottom);
+   if(left!==viewport.scrollLeft||top!==viewport.scrollTop)a.interaction.move(a.x,a.y);
+  }
+  edgeFrame=requestAnimationFrame(edge);
+ };
+ const down=e=>{
+  pointers.add(e.pointerId);if(pointers.size===1)suppressClick=false;
+  if(pointers.size>1){if(active)e.preventDefault();cancel();return;}
+  const row=e.target.closest?.('[data-reserve-id]');
+  if(!row||!root.contains(row)||row.disabled||e.button!==0)return;
+  suppressClick=false;active={id:e.pointerId,unit:row.dataset.reserveId,startX:e.clientX,startY:e.clientY,x:e.clientX,y:e.clientY};
+ };
+ const move=e=>{
+  const a=active;if(!a||a.id!==e.pointerId)return;
+  a.x=e.clientX;a.y=e.clientY;
+  if(!a.interaction&&Math.hypot(a.x-a.startX,a.y-a.startY)>10){
+   a.interaction=begin(a.unit);if(!a.interaction){active=null;return;}
+   suppressClick=true;viewport.setPointerCapture(e.pointerId);
+  }
+  if(a.interaction){e.preventDefault();a.interaction.move(a.x,a.y);if(edgeFrame===null)edgeFrame=requestAnimationFrame(edge);}
+ };
+ const up=e=>{
+  pointers.delete(e.pointerId);
+  const a=active;if(!a||a.id!==e.pointerId)return;stop();active=null;
+  if(a.interaction){
+   e.preventDefault();suppressClick=true;
+   const r=viewport.getBoundingClientRect();
+   if(e.clientX>=r.left&&e.clientX<r.right&&e.clientY>=r.top&&e.clientY<r.bottom)a.interaction.end(e.clientX,e.clientY);
+   else a.interaction.cancel();
+  }
+ };
+ const click=e=>{if(suppressClick){e.preventDefault();e.stopImmediatePropagation();suppressClick=false;}};
+ const abort=e=>{pointers.delete(e.pointerId);if(active?.id===e.pointerId)cancel();};
+ const reset=()=>{cancel();pointers.clear();};
+ const hidden=()=>{if(document.hidden)reset();};
+ document.addEventListener('pointerdown',down,{capture:true,passive:false});
+ document.addEventListener('pointermove',move,{capture:true,passive:false});
+ document.addEventListener('pointerup',up,{capture:true,passive:false});
+ document.addEventListener('pointercancel',abort,true);
+ document.addEventListener('click',click,true);
+ window.addEventListener('blur',reset);document.addEventListener('visibilitychange',hidden);
+ return ()=>{cancel();document.removeEventListener('pointerdown',down,true);document.removeEventListener('pointermove',move,true);document.removeEventListener('pointerup',up,true);document.removeEventListener('pointercancel',abort,true);document.removeEventListener('click',click,true);window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',hidden);};
+}
