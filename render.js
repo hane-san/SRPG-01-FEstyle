@@ -1,3 +1,4 @@
+import {paintFantasyTerrain,paintFantasyCamp,FANTASY_COLORS,paintThemedUnit} from './fantasy-theme.js?v=trial90';
 import {paintIndustrialTerrain,paintIndustrialCamp,INDUSTRIAL_COLORS} from './sample-theme.js?v=sample76';
 import {weaponFrame,bossFracture,isBossUnit} from './weapon-fx.js?v=0.8.0-weapon48';
 import {impactFrame,landingFrame} from './combat-fx.js?v=0.8.0-fx39';
@@ -21,7 +22,7 @@ function surface(s){const c=document.createElement('canvas');c.width=s.map.w*32;
 function layers(canvas,s,view){
  let cache=caches.get(canvas);if(!cache){cache={terrainBuilds:0,rangeBuilds:0,boardBuilds:0};caches.set(canvas,cache);}
  const mapKey=JSON.stringify([s.map.id,s.map.w,s.map.h,s.map.tiles,view.sampleTheme||null]),weather=weatherAt(s);
- if(cache.mapKey!==mapKey){cache.terrain=surface(s);(view.sampleTheme==='industrial'?paintIndustrialTerrain(cache.terrain.getContext('2d'),s.map):paintTerrain(cache.terrain.getContext('2d'),s));cache.mapKey=mapKey;cache.terrainBuilds++;}
+ if(cache.mapKey!==mapKey){cache.terrain=surface(s);(view.sampleTheme==='industrial'?paintIndustrialTerrain(cache.terrain.getContext('2d'),s.map):view.sampleTheme==='fantasy'?paintFantasyTerrain(cache.terrain.getContext('2d'),s.map):paintTerrain(cache.terrain.getContext('2d'),s));cache.mapKey=mapKey;cache.terrainBuilds++;}
  const rangeKey=JSON.stringify([mapKey,weather,view.selected,!!view.danger,s.units.map(u=>[u.id,u.team,u.alive,u.acted,u.x,u.y,u.move,u.range,u.ai,u.type,u.skill,u.deployed])]);
  const selected=view.sortie?view.sortieUnit:s.units.find(u=>u.id===view.selected);
  if(cache.rangeKey!==rangeKey){
@@ -96,7 +97,7 @@ function paintTactics(c,s,view,selected,{moves,attacks,danger}){
   }
  }
  for(const w of s.warnings)for(const p of w.cells){c.strokeStyle=w.kind==='cannon'?'#ffdfb0':'#e0b9f2';c.lineWidth=2;c.strokeRect(p.x*32+2,p.y*32+2,28,28);c.fillStyle=w.kind==='cannon'?'#b34545bb':'#79568ebb';c.fillRect(p.x*32+3,p.y*32+3,26,8);c.fillStyle='#fff2cd';c.font='bold 7px sans-serif';c.textAlign='center';c.fillText(w.kind==='cannon'?`P4 −${RULES.barrageDamage}`:`増援T${w.turn}`,p.x*32+16,p.y*32+10);}
- if(s.map.camp&&s.map.tiles[s.map.camp.y]?.[s.map.camp.x]!=='c'){const x=s.map.camp.x*32,y=s.map.camp.y*32;if(view.sampleTheme==='industrial')paintIndustrialCamp(c,x,y);else castle(c,x,y);}
+ if(s.map.camp&&s.map.tiles[s.map.camp.y]?.[s.map.camp.x]!=='c'){const x=s.map.camp.x*32,y=s.map.camp.y*32;if(view.sampleTheme==='industrial')paintIndustrialCamp(c,x,y);else if(view.sampleTheme==='fantasy')paintFantasyCamp(c,x,y);else castle(c,x,y);}
   for(const [p,color,label]of [[s.map.goal,'#c66557','北城'],[s.map.camp,'#6dc6db','出撃'],[s.map.south,s.southTaken?'#75b9c0':'#c66557','南城']])if(p){c.fillStyle=color;c.fillRect(p.x*32+27,p.y*32+2,3,19);c.fillRect(p.x*32+19,p.y*32+2,10,7);c.fillStyle='#fff8d4';c.font='7px sans-serif';c.textAlign='center';c.fillText(label,p.x*32+16,p.y*32+31);}
  const weather=weatherAt(s);
  if(weather!=='clear'){
@@ -110,7 +111,7 @@ export function render(canvas,s,view){
  canvas.style.width=`${s.map.w*tile}px`;canvas.style.height=`${s.map.h*tile}px`;
  const c=canvas.getContext('2d');c.setTransform(ratio*tile/32,0,0,ratio*tile/32,0,0);c.imageSmoothingEnabled=false;
  c.drawImage(layers(canvas,s,view).board,0,0);
- const selected=s.units.find(u=>u.id===view.selected);
+ const selected=s.units.find(u=>u.id===view.selected),drawStyled=(c,u)=>drawUnit(c,u,view.sampleTheme);
  if(view.route?.length>1)drawRoute(c,view.route);
  for(const u of alive(s)){
   if(view.sortieEntrance?.id===u.id)continue;
@@ -119,12 +120,12 @@ export function render(canvas,s,view){
   const character=motion?{...u,x:motion.x,y:motion.y-(motion.bob||0),acted:false}:u;
   if(jewel)character.hp=jewel.hp;
   const hit=view.impact?.id===u.id&&view.impact.kind!=='heal'?view.impact:null;
-  if(hit){const recoil=impactFrame(hit.style,hit.progress).recoil;c.save();c.translate(hit.dx*recoil,hit.dy*recoil);drawUnit(c,character);c.restore();}
-  else drawUnit(c,character);
+  if(hit){const recoil=impactFrame(hit.style,hit.progress).recoil;c.save();c.translate(hit.dx*recoil,hit.dy*recoil);drawStyled(c,character);c.restore();}
+  else drawStyled(c,character);
  }
  if(view.sortieEntrance){
   const intro=view.sortieEntrance,unit=s.units.find(u=>u.id===intro.id),p=intro.progress;
-  if(unit){c.save();c.globalAlpha=Math.max(.1,p);drawUnit(c,{...unit,x:intro.x,y:intro.y-.18*(1-p),acted:false});c.restore();}
+  if(unit){c.save();c.globalAlpha=Math.max(.1,p);drawStyled(c,{...unit,x:intro.x,y:intro.y-.18*(1-p),acted:false});c.restore();}
  }
  if(view.sortieQuote){
   const {x,y,line}=view.sortieQuote,text=String(line).slice(0,24);
@@ -134,9 +135,9 @@ export function render(canvas,s,view){
   c.fillRect(left,top,w,19);c.strokeRect(left+.5,top+.5,w-1,18);
   c.fillStyle='#fff6d7';c.textAlign='center';c.fillText(text,left+w/2,top+13);c.restore();
  }
- if(view.sortieUnit){c.save();c.globalAlpha=.83;drawUnit(c,view.sortieUnit);c.restore();}
- if(view.ghost){c.save();c.globalAlpha=view.ghost.alpha;if(view.ghost.shatter)drawGemCollapse(c,view.ghost.unit,view.ghost.progress);else drawUnit(c,view.ghost.unit);c.restore();}
- if(selected?.alive&&view.dest&&(view.dest.x!==selected.x||view.dest.y!==selected.y)){c.globalAlpha=.55;drawUnit(c,{...selected,...view.dest});c.globalAlpha=1;}
+ if(view.sortieUnit){c.save();c.globalAlpha=.83;drawStyled(c,view.sortieUnit);c.restore();}
+ if(view.ghost){c.save();c.globalAlpha=view.ghost.alpha;if(view.ghost.shatter)drawGemCollapse(c,view.ghost.unit,view.ghost.progress);else drawStyled(c,view.ghost.unit);c.restore();}
+ if(selected?.alive&&view.dest&&(view.dest.x!==selected.x||view.dest.y!==selected.y)){c.globalAlpha=.55;drawStyled(c,{...selected,...view.dest});c.globalAlpha=1;}
  if(view.dest&&selected&&view.selected)cursor(c,view.dest,'#fff1ad');
  if(view.moveArmed&&view.dest&&selected?.team==='ally'){
   const x=view.dest.x*32,y=view.dest.y*32;c.save();c.strokeStyle='#ffedbe';c.lineWidth=3;c.shadowColor='#ffe1a0';c.shadowBlur=7;c.strokeRect(x+3,y+3,26,26);c.restore();
@@ -321,12 +322,13 @@ function drawRoute(c,path){
 }
 function castle(c,x,y){c.fillStyle='#52645f';c.fillRect(x+3,y+10,26,19);c.fillStyle='#c6c6a5';c.fillRect(x+6,y+8,20,17);for(const xx of [4,13,23]){c.fillRect(x+xx,y+3,5,11);c.fillStyle='#e0d5af';c.fillRect(x+xx,y+3,5,3);c.fillStyle='#c6c6a5';}c.fillStyle='#354b4b';c.fillRect(x+13,y+16,7,10);}
 // One original, equipment-led silhouette per unit. No external sprite assets.
-function drawUnit(c,u){const x=u.x*32,y=u.y*32,blue=u.team==='ally',spent=blue&&u.acted;
+function drawUnit(c,u,theme=null){const x=u.x*32,y=u.y*32,blue=u.team==='ally',spent=blue&&u.acted;
  const ink=spent?'#46504e':'#21323d',col=spent?'#7c8581':blue?'#376ec0':'#bb4352',light=spent?'#b4b8a6':blue?'#9ed6f1':'#ffb09b',skin=spent?'#b6b9a2':'#efd6a4';
  const rect=(dx,dy,w,h,color)=>{c.fillStyle=color;c.fillRect(x+dx,y+dy,w,h);};
  rect(7,26,21,3,'#19363866');
  // Equipment and body shape both encode class; palette only encodes allegiance.
  const metal=spent?'#c0c2b1':'#e0e8d8',wood=spent?'#99988a':'#a57648';
+ if(!paintThemedUnit(c,u,theme)){
  if(u.type==='shooter'){
   rect(5,20,23,6,ink);rect(7,21,19,3,wood);rect(7,25,5,5,ink);rect(22,25,5,5,ink);rect(8,26,3,3,metal);rect(23,26,3,3,metal);
   rect(13,9,9,12,col);rect(14,4,8,8,ink);rect(15,6,6,5,skin);rect(14,3,9,4,metal);
@@ -356,6 +358,7 @@ function drawUnit(c,u){const x=u.x*32,y=u.y*32,blue=u.team==='ally',spent=blue&&
    c.strokeStyle='#f7edc8';c.lineWidth=1;c.beginPath();c.moveTo(x+24,y+6);c.lineTo(x+24,y+27);c.stroke();rect(20,16,9,2,skin);
   }else{rect(25,3,3,18,ink);rect(25,4,2,16,metal);rect(22,20,8,2,'#edc577');rect(25,22,2,5,wood);rect(10,3,4,7,metal);}
  }
+ }
  // Persistent high-contrast class badge remains readable for spent units.
  rect(0,0,10,11,'#172f35e6');c.font='bold 8px sans-serif';c.textAlign='center';c.fillStyle='#fff3cf';c.fillText(u.glyph,x+5,y+8);
  // High-contrast HP6 pips, visible even when zoomed out.
@@ -370,5 +373,5 @@ function drawUnit(c,u){const x=u.x*32,y=u.y*32,blue=u.team==='ally',spent=blue&&
  if(spent){rect(26,3,4,4,'#f6e6b1');rect(27,4,2,2,ink);}
 }
 function cursor(c,p,color){const x=p.x*32,y=p.y*32;c.fillStyle='#273847';for(const [dx,dy]of [[0,0],[23,0],[0,23],[23,23]])c.fillRect(x+dx,y+dy,9,9);c.fillStyle=color;for(const [dx,dy,sx,sy]of [[1,1,1,1],[30,1,-1,1],[1,30,1,-1],[30,30,-1,-1]]){c.fillRect(x+dx+(sx<0?-7:0),y+dy,8,2);c.fillRect(x+dx,y+dy+(sy<0?-7:0),2,8);}}
-export function mini(canvas,s,viewport,tile,theme=null){const c=canvas.getContext('2d');c.clearRect(0,0,64,120);const sx=64/s.map.w,sy=120/s.map.h;for(let y=0;y<s.map.h;y++)for(let x=0;x<s.map.w;x++){c.fillStyle=theme==='industrial'?INDUSTRIAL_COLORS[s.map.tiles[y][x]]:PALETTES[s.map.id]?.[s.map.tiles[y][x]]||COLORS[s.map.tiles[y][x]];c.fillRect(x*sx,y*sy,sx+.3,sy+.3);}for(const u of alive(s)){c.fillStyle=u.team==='ally'?'#ace4f3':'#b43947';c.fillRect(u.x*sx,u.y*sy,Math.max(sx,3),Math.max(sy,3));}c.strokeStyle='#fff0ad';c.lineWidth=1;c.strokeRect(viewport.scrollLeft/tile*sx,viewport.scrollTop/tile*sy,viewport.clientWidth/tile*sx,viewport.clientHeight/tile*sy);}
+export function mini(canvas,s,viewport,tile,theme=null){const c=canvas.getContext('2d');c.clearRect(0,0,64,120);const sx=64/s.map.w,sy=120/s.map.h;for(let y=0;y<s.map.h;y++)for(let x=0;x<s.map.w;x++){c.fillStyle=theme==='industrial'?INDUSTRIAL_COLORS[s.map.tiles[y][x]]:theme==='fantasy'?FANTASY_COLORS[s.map.tiles[y][x]]:PALETTES[s.map.id]?.[s.map.tiles[y][x]]||COLORS[s.map.tiles[y][x]];c.fillRect(x*sx,y*sy,sx+.3,sy+.3);}for(const u of alive(s)){c.fillStyle=u.team==='ally'?'#ace4f3':'#b43947';c.fillRect(u.x*sx,u.y*sy,Math.max(sx,3),Math.max(sy,3));}c.strokeStyle='#fff0ad';c.lineWidth=1;c.strokeRect(viewport.scrollLeft/tile*sx,viewport.scrollTop/tile*sy,viewport.clientWidth/tile*sx,viewport.clientHeight/tile*sy);}
 

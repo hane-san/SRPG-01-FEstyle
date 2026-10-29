@@ -382,3 +382,19 @@ a{color:#e4c8f0}
 #forecast .forecast-return{display:inline-block;margin-left:8px;font-weight:800;text-decoration:underline}
 #forecast .forecast-jump{display:inline-block;margin-left:8px;padding:0 6px;border:1px solid currentColor;border-radius:4px;font-size:12px;font-weight:800;white-space:nowrap}
 #forecast .forecast-jump::before{content:"◎ "}
+
+/* Trial controls never change the fixed battlefield/dock geometry. */
+.trial-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
+.trial-grid button{min-height:48px;padding:7px 5px;line-height:1.4}
+#tacticalLabCanvas{display:block;max-width:100%;height:auto!important;margin:0 auto;background:#243746;image-rendering:pixelated}
+.direct-sortie{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#modal:has(#deploymentList){max-height:64dvh;margin-block:auto 12px}
+#modal:has(#deploymentList) h2{font-size:20px;margin-bottom:5px}
+#modal:has(#deploymentList) p{font-size:12px;line-height:1.5}
+#deploymentList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+#deploymentList .sortie-choice{margin:0;min-width:0;gap:5px;padding:5px}
+#deploymentList .sortie-choice-icon{flex-basis:26px;font-size:16px}
+#deploymentList .sortie-choice-copy{font-size:11px}
+@media(max-height:500px) and (min-width:600px){#modal:has(#deploymentList){width:310px;max-height:96dvh;margin:6px 8px 6px auto}}
+
+.sample-preview{display:block}

@@ -1,3 +1,4 @@
+import {openTacticalLab} from './tactical-lab.js?v=trial90';
 import {riskCue,hasAnnouncedCannon,combatCue,thumbSide,buildThreatIndex,indexedThreat,warningFocus} from './tactical-ui.js?v=0.8.0-ui55-warnjump';
 import {hudSignals,routeIntent} from './ui-hud.js?v=0.8.0-hud50';
 import {openGemDemo} from './gem-demo.js?v=0.8.0-gems28';
@@ -5,8 +6,8 @@ import {appendChapter,chronicleLines} from './chronicle.js?v=0.8.0-war43';
 import {RELEASE,SKILLS,PROMOTIONS,RULES,CLASS_ROLES} from './config.js?v=0.8.0-p3-26-sortie29-classes68';
 import {MAPS} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
-import {render,mini} from './render.js?v=0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79';
-import {bindMapInput,createHoldLock} from './ui-input.js?v=0.8.0-issue24';
+import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79';
+import {bindMapInput,createHoldLock,bindReserveInput} from './ui-input.js?v=trial90';
 import {readSave,writeSave} from './save.js?v=0.8.0-p3-26-save37-war43-classes68';
 import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import {createAudio} from './audio.js?v=0.8.0-issue17-sortie29-issue24-gems28-flick35-weapon48';
@@ -22,6 +23,9 @@ const SAMPLE_SCENES={
 const sampleCode=new URLSearchParams(location.search).get('sample');
 const sampleScene=Object.hasOwn(SAMPLE_SCENES,sampleCode)?SAMPLE_SCENES[sampleCode]:null;
 const sampleMode=!!sampleScene;
+const STYLES={original:'現行',industrial:'工業幻想',fantasy:'古典ファンタジー'};
+const requestedStyle=new URLSearchParams(location.search).get('style');
+let previewStyle=Object.hasOwn(STYLES,requestedStyle)?requestedStyle:'industrial';
 function decoratePreview(state){
  if(sampleScene&&state.map.id===sampleScene.id)state.map={...state.map,
   title:sampleScene.title,subtitle:'工業幻想／世界観見た目試遊・本編未反映',
@@ -32,7 +36,7 @@ if(sampleMode){document.title=sampleScene.title+' — 世界観試遊';$('menuBt
 
 let s,campaign=false,settings={mode:'classic',healing:'H1',enemyAttack:0},zoom=0,locked=false;
 let lastSize={w:0,h:0};
-let view={selected:null,dest:null,target:null,action:null,danger:false,tile:32,cursor:null,sampleTheme:sampleMode?'industrial':null};
+let view={selected:null,dest:null,target:null,action:null,danger:false,tile:32,cursor:null,sampleTheme:sampleMode?previewStyle:null};
 let fast=false;try{fast=localStorage.getItem('field-command-fast')==='true';}catch{}
 const sound=createAudio(),music=createMusic();
 let battleCard=null,lastNotice=null,pendingUndo=null;
@@ -265,7 +269,7 @@ function mapTap(clientX,clientY){
  if(a?.team==='ally'&&!a.acted&&(!u||u.team==='enemy'||u.id===a.id)){if(draftMove(a,p))openDraft();return;}
  if(u)selectUnit(u,true);else{resetSelection();refresh();}
 }
-bindMapInput(vp,mapTap,(clientX,clientY)=>{
+function beginMapGesture(clientX,clientY){
  if(locked||s.status!=='playing'||$('modal').open)return {pan:true};
  const p=mapPoint(clientX,clientY),sortieOrigin=!!view.sortie&&!!s.map.camp&&E.dist(p,s.map.camp)===0,pressed=sortieOrigin?null:E.at(s,p);if(!sortieOrigin&&s.map.camp&&E.dist(p,s.map.camp)===0&&(!pressed||view.selected===pressed.id))return {pan:true,tap:()=>setTimeout(openDeployment,150)};
  const before=structuredClone(view);let u=selected();
@@ -351,7 +355,8 @@ bindMapInput(vp,mapTap,(clientX,clientY)=>{
   end(x,y);
  };
  return {move:update,end,tap,cancel:restore};
-});
+}
+bindMapInput(vp,mapTap,beginMapGesture);
 $('toolsToggle').onclick=()=>{const open=$('mapToolChoices').hidden;$('mapToolChoices').hidden=!open;$('toolsToggle').setAttribute('aria-expanded',String(open));};
 $('soundBtn').onclick=()=>{sound.toggle();refresh();};
 $('dangerBtn').onclick=()=>{view.danger=!view.danger;refresh();};
@@ -415,23 +420,45 @@ function warRecord(){
 }
 function start(id,chain=false,lost=[],specialties={},chronicle=[]){pendingUndo=null;battleCard=null;lastNotice=null;s=decoratePreview(E.createGame(id,settings,lost,{specialties,chronicle}));campaign=chain;resetSelection();view.cursor=null;zoom=0;close();save();refresh();home();}
 function confirmRestart(id){modal('<h2>再試行</h2><p>このマップ開始時の部隊構成に戻ります。現在の戦闘記録は消えます。</p><div id="restartConfirm"></div>');const startLost=campaign?s.lost.filter(id=>!s.metrics.deaths.some(d=>d.id===id)):[];$('restartConfirm').append(button('再試行する',()=>{settings={...s.settings};start(id,campaign,startLost,s.specialties,s.chronicle||[]);},'danger wide'));}
-function selectSortie(u){
+function selectSortie(u,centerOnCastle=true){
  const virtual=E.sortieUnit(s,u.id);
  if(!virtual||!E.canDeploy(s))return;
+ // Returning reserves carry acted=true; the committed sortie resets it too.
+ virtual.acted=false;
  close();resetSelection();battleCard=null;lastNotice=null;
  Object.assign(view,{selected:u.id,sortie:true,sortieUnit:virtual,dest:{...s.map.camp},cursor:{...s.map.camp},route:[],keyboard:false,menu:false});
- sound.play('select');refresh();recenter({x:s.map.camp.x+.5,y:s.map.camp.y+.5});draw();vp.focus({preventScroll:true});
+ sound.play('select');refresh();if(centerOnCastle)recenter({x:s.map.camp.x+.5,y:s.map.camp.y+.5});draw();vp.focus({preventScroll:true});
+}
+let directSortie=true,releaseReserveInput=null;
+try{directSortie=localStorage.getItem('field-command-direct-sortie')!=='false';}catch{}
+function beginReserveGesture(id){
+ if(locked||!E.canDeploy(s))return null;
+ const u=E.reserves(s).find(u=>u.id===id);if(!u)return null;
+ const before=structuredClone(view),card=battleCard,notice=lastNotice;
+ selectSortie(u,false);
+ const r=canvas.getBoundingClientRect(),p=s.map.camp;
+ const interaction=beginMapGesture(r.left+(p.x+.5)*view.tile,r.top+(p.y+.5)*view.tile);
+ const cancel=()=>{interaction.cancel?.();Object.assign(view,before);battleCard=card;lastNotice=notice;refresh();};
+ return {move:interaction.move,cancel,end:(x,y)=>{
+  interaction.move?.(x,y);const point=mapPoint(x,y),target=E.at(s,point);
+  if(view.invalid||view.attackError||!view.dest||E.dist(view.dest,s.map.camp)===0||
+    (E.key(point)!==E.key(view.dest)&&target?.id!==view.target)){cancel();return;}
+  interaction.end(x,y);
+ }};
 }
 function openDeployment(){
  if(locked||s.status!=='playing'||s.phase!==1)return;
  resetSelection();refresh();
+ releaseReserveInput?.();releaseReserveInput=null;
  const r=E.reserves(s),allowed=E.canDeploy(s);
  modal(`<h2>本城から出撃</h2><p>予備 ${r.length}隊／戦場 ${E.alive(s,'ally').length}/${RULES.maxDeployed}隊。このターン残り ${Math.max(0,E.deploymentLimit(s)-s.deployedThisTurn)}隊（初ターン2隊／以後1隊）。アイコンを選び城からスライドして出撃先を決定します。行動を確定するまで出撃枠は消費しません。</p><div id="deploymentList"></div>`);
  const root=$('deploymentList');
+ if(directSortie){const hint=document.createElement('p');hint.className='hint';hint.textContent='アイコンからそのまま戦場へスライド。タップしてから城をなぞる操作も使えます。';root.before(hint);releaseReserveInput=bindReserveInput(root,vp,beginReserveGesture);}
  if(!r.length){root.textContent='予備部隊はいません。';return;}
  if(!allowed){root.textContent='出撃上限、または本城周辺の空きがありません。';return;}
  for(const u of r){
   const row=button('',()=>selectSortie(u),'wide sortie-choice');
+  if(directSortie){row.dataset.reserveId=u.id;row.classList.add('direct-sortie');}
   const symbol=document.createElement('span');symbol.className='sortie-choice-icon';symbol.textContent=u.glyph;
   const caption=document.createElement('span');caption.className='sortie-choice-copy';caption.textContent=`${u.name} ／ ${u.label}　HP${u.hp}${u.maxCharges?' ・弾薬'+u.charges:''}`;
   row.append(symbol,caption);root.append(row);
@@ -451,13 +478,32 @@ function promotionMenu(){
   section.append(row);root.append(section);
  }
 }
+function addTrialControls(root,compare=false){
+ const section=document.createElement('section');section.className='trial-controls';
+ if(compare){
+  const label=document.createElement('p');label.className='hint';label.textContent='同じ戦況・同じ位置で画風だけを切り替えます。';section.append(label);
+  const row=document.createElement('div');row.className='trial-grid';row.id='styleChoices';
+  for(const [id,label] of Object.entries(STYLES)){
+   const b=button(label,()=>{previewStyle=id;view.sampleTheme=id;const url=new URL(location.href);url.searchParams.set('style',id);history.replaceState(null,'',url);document.title=`${sampleScene.title} — ${label}試遊`;close();draw();},'subtle');
+   b.dataset.style=id;b.setAttribute('aria-pressed',String(previewStyle===id));row.append(b);
+  }
+  section.append(row);
+ }
+ const mode=button(directSortie?'出撃操作：アイコンから直接スライド':'出撃操作：従来のタップ→城からスライド',()=>{
+  directSortie=!directSortie;try{localStorage.setItem('field-command-direct-sortie',String(directSortie));}catch{}
+  showMenu();
+ },'wide subtle');mode.id='directSortieToggle';mode.setAttribute('aria-pressed',String(directSortie));section.append(mode);
+ const lab=button('戦術実験室：攻撃・重装・P3を比べる',()=>openTacticalLab({modal,button,sound,isFast:()=>fast,isReduced:reduced,theme:view.sampleTheme}),'wide');lab.id='openTacticalLab';section.append(lab);
+ root.append(section);
+}
 function showMenu(){if(locked)return;
  if(sampleMode){
   modal('<h2>世界観の見た目試遊</h2><p>既存の戦闘システム・地形・配置を使った独立サンプルです。試遊中の戦果・離脱・操作は本編セーブに一切保存されません。ページを更新するとサンプルは最初からになります。</p><div id="previewChoices" class="sample-options"></div>');
   const controls=$('previewChoices');
+  addTrialControls(controls,true);
   controls.append(button('↻ このサンプルを再試行',()=>start(sampleScene.id),'wide'));
-  controls.append(button('01 外縁工業地帯',()=>{location.assign('./?sample=01');},'wide'));
-  controls.append(button('04 三橋水路戦',()=>{location.assign('./?sample=04');},'wide'));
+  controls.append(button('01 外縁工業地帯',()=>{location.assign('./?sample=01&style='+previewStyle);},'wide'));
+  controls.append(button('04 三橋水路戦',()=>{location.assign('./?sample=04&style='+previewStyle);},'wide'));
   controls.append(button('本編へ戻る（保存済みの続き）',()=>{location.assign('./');},'primary wide'));
   return;
  }
@@ -466,8 +512,10 @@ function showMenu(){if(locked)return;
  preview.className='map-card sample-preview';
  preview.innerHTML='<strong>🛠 世界観の見た目試遊（本編に未反映）</strong><p>既存の戦術のまま01・04を工業幻想の画風で遊べます。別ページで起動し、本編セーブには触れません。</p>';
  preview.append(button('01 外縁工業地帯を試す',()=>{location.assign('./?sample=01');},'wide'),
-  button('04 三橋水路戦を試す',()=>{location.assign('./?sample=04');},'wide'));
+  button('04 三橋水路戦を試す',()=>{location.assign('./?sample=04&style='+previewStyle);},'wide'));
+ const styles=document.createElement('p');styles.className='hint';styles.textContent='試遊中のメニューで、現行／工業幻想／古典ファンタジーを即時比較できます。';preview.append(styles);
  $('maps').before(preview);
+ addTrialControls(preview);
  const speedButton=button('',()=>{fast=!fast;try{localStorage.setItem('field-command-fast',String(fast));}catch{}updateSpeed();});function updateSpeed(){speedButton.textContent=fast?'進行速度：高速':'進行速度：通常（行動をゆっくり表示）';speedButton.setAttribute('aria-pressed',String(fast));}updateSpeed();$('speedControl').append(speedButton);
  const thumbButton=button('',()=>{thumb=thumb==='right'?'left':'right';try{localStorage.setItem('field-command-thumb-side',thumb);}catch{}applyThumb();updateThumb();},'subtle');
  thumbButton.id='thumbSideToggle';
