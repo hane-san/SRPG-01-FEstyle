@@ -73,7 +73,8 @@ function resetSelection(){Object.assign(view,{selected:null,dest:null,target:nul
 function center(){return {x:(vp.scrollLeft+vp.clientWidth/2)/view.tile,y:(vp.scrollTop+vp.clientHeight/2)/view.tile};}
 function recenter(p,warningVisit=false){if(!warningVisit)warningReturn=null;vp.scrollLeft=p.x*view.tile-vp.clientWidth/2;vp.scrollTop=p.y*view.tile-vp.clientHeight/2;updateWarningJump();}
 function fit(){lastSize={w:vp.clientWidth,h:vp.clientHeight};view.tile=Math.max(20,Math.floor(vp.clientWidth/s.map.w))*[1,1.4,1.9][zoom];$('zoomLabel').textContent=['全幅','×1.4','×1.9'][zoom];}
-function draw(){render(canvas,s,view);mini($('minimap'),s,vp,view.tile,view.sampleTheme);}
+function drawMini(){mini($('minimap'),s,vp,view.tile,view.sampleTheme);}
+function draw(){render(canvas,s,view);drawMini();}
 // Announced cells can sit outside a phone viewport: the banner says so and a tap pans there (explicit navigation, no rule effect).
 function visibleTiles(){const f=$('forecast'),top=f&&!f.hidden?f.offsetHeight:0;return {x0:vp.scrollLeft/view.tile,x1:(vp.scrollLeft+vp.clientWidth)/view.tile,y0:(vp.scrollTop+top)/view.tile,y1:(vp.scrollTop+vp.clientHeight)/view.tile};}
 let warningReturn=null;
@@ -356,8 +357,8 @@ $('soundBtn').onclick=()=>{sound.toggle();refresh();};
 $('dangerBtn').onclick=()=>{view.danger=!view.danger;refresh();};
 function setZoom(z){const p=center();zoom=Math.max(0,Math.min(2,z));fit();draw();recenter(p);}
 $('zoomIn').onclick=()=>setZoom(zoom+1);$('zoomOut').onclick=()=>setZoom(zoom-1);
-function home(){const friends=E.alive(s,'ally'),a=selected()?.team==='ally'?selected():friends.find(u=>!u.acted)||friends[0],p=a||s.map.camp;if(p){recenter({x:p.x+.5,y:p.y+.5});mini($('minimap'),s,vp,view.tile);}}
-$('homeBtn').onclick=home;$('forecast').onclick=jumpToWarning;let miniFrame=null;vp.addEventListener('scroll',()=>{if(miniFrame===null)miniFrame=requestAnimationFrame(()=>{miniFrame=null;mini($('minimap'),s,vp,view.tile);placeOrders();updateWarningJump();});},{passive:true});
+function home(){const friends=E.alive(s,'ally'),a=selected()?.team==='ally'?selected():friends.find(u=>!u.acted)||friends[0],p=a||s.map.camp;if(p){recenter({x:p.x+.5,y:p.y+.5});drawMini();}}
+$('homeBtn').onclick=home;$('forecast').onclick=jumpToWarning;let miniFrame=null;vp.addEventListener('scroll',()=>{if(miniFrame===null)miniFrame=requestAnimationFrame(()=>{miniFrame=null;drawMini();placeOrders();updateWarningJump();});},{passive:true});
 $('forecast').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();jumpToWarning();}};
 function nextUnit(){const u=nextReady(s,view.selected);if(!u)return;selectUnit(u,true);recenter({x:u.x+.5,y:u.y+.5});draw();vp.focus({preventScroll:true});}
 $('nextUnit').onclick=nextUnit;
