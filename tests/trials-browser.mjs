@@ -58,7 +58,7 @@ try{
   await t.reset();
   // Old two-step interaction remains available through a real menu switch.
   await page.locator('#menuBtn').click();await page.locator('#directSortieToggle').click();
-  await page.locator('#closeModal').click();await begin();await t.touch('touchEnd',[]);
+  await page.locator('#closeModal').click();await page.locator('#orders button').filter({hasText:'出撃'}).click();
   assert.equal(await page.locator('#deploymentList .direct-sortie').count(),0);
   await page.locator('#deploymentList button').first().click();assert.equal((await t.draft()).sortie,true);
   await page.locator('#menuBtn').click();await page.locator('#directSortieToggle').click();await page.locator('#closeModal').click();
