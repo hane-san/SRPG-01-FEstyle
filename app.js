@@ -1,18 +1,19 @@
 import {openTacticalLab} from './tactical-lab.js?v=trial90';
+import {AI_PROFILES,HIT_PROFILES} from './trial-profiles.js?v=trial92';
 import {riskCue,hasAnnouncedCannon,combatCue,thumbSide,buildThreatIndex,indexedThreat,warningFocus} from './tactical-ui.js?v=0.8.0-ui55-warnjump';
 import {hudSignals,routeIntent} from './ui-hud.js?v=0.8.0-hud50';
 import {openGemDemo} from './gem-demo.js?v=0.8.0-gems28';
 import {appendChapter,chronicleLines} from './chronicle.js?v=0.8.0-war43';
 import {RELEASE,SKILLS,PROMOTIONS,RULES,CLASS_ROLES} from './config.js?v=0.8.0-p3-26-sortie29-classes68';
 import {MAPS} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
-import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
-import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96';
+import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-trial92';
+import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96-trial92';
 import {bindMapInput,createHoldLock,bindReserveInput} from './ui-input.js?v=trial90';
 import {readSave,writeSave} from './save.js?v=0.8.0-p3-26-save37-war43-classes68';
 import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import {createAudio} from './audio.js?v=0.8.0-issue17-sortie29-issue24-gems28-flick35-weapon48';
 import {createMusic,buildTrack,SCORES,BONUS_SCORES,MUSIC_LIBRARY,trackNumber,assignedTrackNumber,trackByNumber} from './music.js?v=0.8.0-library42';
-import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-ui96';
+import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-ui96-trial92';
 import {DISPLAY_NAME} from './display-name.js?v=0.8.0-display-2fb0ebb2368b';
 const $=id=>document.getElementById(id),canvas=$('battlefield'),vp=$('mapViewport');
 // The preview is a separate, nonpersistent URL session. Normal saves are never read/written here.
@@ -24,9 +25,16 @@ const sampleCode=new URLSearchParams(location.search).get('sample');
 const sampleScene=Object.hasOwn(SAMPLE_SCENES,sampleCode)?SAMPLE_SCENES[sampleCode]:null;
 const sampleMode=!!sampleScene;
 const STYLES={original:'現行',industrial:'工業幻想',fantasy:'古典ファンタジー'};
+// Issues #92-#94: the trial screen compares enemy AI and hit feel from one checkpoint.
+// Profiles live in the URL and on s.trial only here; the campaign never sees them.
+const trialParams=new URLSearchParams(location.search);
+let trialAI=sampleMode&&Object.hasOwn(AI_PROFILES,trialParams.get('ai'))?trialParams.get('ai'):'current';
+let trialHit=sampleMode&&Object.hasOwn(HIT_PROFILES,trialParams.get('hit'))?trialParams.get('hit'):'current';
+let turnCheckpoint=null;
 const requestedStyle=new URLSearchParams(location.search).get('style');
 let previewStyle=Object.hasOwn(STYLES,requestedStyle)?requestedStyle:'industrial';
 function decoratePreview(state){
+ if(sampleScene)state.trial={ai:trialAI};
  if(sampleScene&&state.map.id===sampleScene.id)state.map={...state.map,
   title:sampleScene.title,subtitle:'工業幻想／世界観見た目試遊・本編未反映',
   briefing:sampleScene.briefing+' '+state.map.briefing};
@@ -60,7 +68,7 @@ function focusedRisk(unit,dest){
  return riskCache.get(key);
 }
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
-const playback=createPlayback({getState:()=>s,setState:state=>{s=state;},view,draw,sound,isFast:()=>fast,isReduced:reduced,onCombat:presentCombat,onMessage:message=>{$('phaseFlash').textContent=message;$('phaseFlash').classList.add('visible');}});
+const playback=createPlayback({hitProfile:()=>trialHit,getState:()=>s,setState:state=>{s=state;},view,draw,sound,isFast:()=>fast,isReduced:reduced,onCombat:presentCombat,onMessage:message=>{$('phaseFlash').textContent=message;$('phaseFlash').classList.add('visible');}});
 for(const event of ['pointerdown','keydown'])document.addEventListener(event,()=>{sound.unlock();music.unlock();},{capture:true,passive:true});
 const escapeHTML=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let stored=null;try{if(!sampleMode)stored=readSave(localStorage,RELEASE,MAPS);}catch{/* storage may be disabled */}
@@ -102,6 +110,8 @@ function jumpToWarning(){
  draw();updateWarningJump();
 }
 function refresh(){
+ // The comparison checkpoint is the untouched start of each ally phase (#92).
+ if(sampleMode&&s.phase===1&&s.status==='playing'&&(!turnCheckpoint||turnCheckpoint.turn!==s.turn||turnCheckpoint.map.id!==s.map.id))turnCheckpoint=structuredClone(s);
  music.setScene(s.map.id,s.phase,s.status);
  $('turn').textContent=`T${s.turn}`;$('phaseName').textContent=s.status==='victory'?'勝利':s.status==='defeat'?'敗北':['','味方','敵軍','支援','戦場'][s.phase];
  $('objective').textContent=s.map.base?'北城制圧 / 本陣死守':'北城制圧';
@@ -524,11 +534,31 @@ function addTrialControls(root,compare=false){
  const lab=button('戦術実験室：攻撃・重装・P3を比べる',()=>openTacticalLab({modal,button,sound,isFast:()=>fast,isReduced:reduced,theme:view.sampleTheme}),'wide');lab.id='openTacticalLab';section.append(lab);
  root.append(section);
 }
+function setTrialParam(key,value){const url=new URL(location.href);if(value==='current')url.searchParams.delete(key);else url.searchParams.set(key,value);history.replaceState(null,'',url);}
+// AI changes always restart from the checkpoint; hit feel only changes presentation.
+function restartFromCheckpoint(ai=trialAI){
+ if(!turnCheckpoint)return;trialAI=ai;setTrialParam('ai',ai);
+ s=structuredClone(turnCheckpoint);s.trial={ai};turnCheckpoint=structuredClone(s);
+ pendingUndo=null;battleCard=null;lastNotice={title:`敵AI：${AI_PROFILES[ai].label}`,text:`T${s.turn}の開始時から再開しました`,tail:AI_PROFILES[ai].note};
+ resetSelection();close();refresh();
+}
+function addComparisonControls(root){
+ const section=document.createElement('section');section.className='trial-controls';section.id='comparisonControls';
+ const head=document.createElement('p');head.className='hint';head.textContent=`敵AIを変えると、T${turnCheckpoint?.turn??s.turn}の開始時から同じ盤面でやり直します。打撃感は戦況を変えずにすぐ切り替わります。`;section.append(head);
+ const ai=document.createElement('div');ai.className='trial-grid';ai.id='aiChoices';
+ for(const [id,p] of Object.entries(AI_PROFILES)){const b=button('敵AI：'+p.label,()=>restartFromCheckpoint(id),'subtle');b.dataset.ai=id;b.setAttribute('aria-pressed',String(trialAI===id));b.title=p.note;ai.append(b);}
+ const hit=document.createElement('div');hit.className='trial-grid';hit.id='hitChoices';
+ for(const [id,p] of Object.entries(HIT_PROFILES)){const b=button('打撃感：'+p.label,()=>{trialHit=id;setTrialParam('hit',id);showMenu();},'subtle');b.dataset.hit=id;b.setAttribute('aria-pressed',String(trialHit===id));hit.append(b);}
+ const note=document.createElement('p');note.className='hint';note.textContent=AI_PROFILES[trialAI].note;
+ section.append(ai,note,hit,button(`同じ状態からやり直す（T${turnCheckpoint?.turn??s.turn}開始時）`,()=>restartFromCheckpoint(trialAI),'wide subtle'));
+ root.append(section);
+}
 function showMenu(){if(locked)return;
  if(sampleMode){
   modal('<h2>世界観の見た目試遊</h2><p>既存の戦闘システム・地形・配置を使った独立サンプルです。試遊中の戦果・離脱・操作は本編セーブに一切保存されません。ページを更新するとサンプルは最初からになります。</p><div id="previewChoices" class="sample-options"></div>');
   const controls=$('previewChoices');
   addTrialControls(controls,true);
+  addComparisonControls(controls);
   controls.append(button('↻ このサンプルを再試行',()=>start(sampleScene.id),'wide'));
   controls.append(button('01 外縁工業地帯',()=>{location.assign('./?sample=01&style='+previewStyle);},'wide'));
   controls.append(button('04 三橋水路戦',()=>{location.assign('./?sample=04&style='+previewStyle);},'wide'));

@@ -1,5 +1,6 @@
 import {RULES,TERRAINS,PROMOTIONS} from './config.js?v=0.8.0-p3-26-sortie29-classes68';
 import {MAPS,ROSTER,unit,positions,enemy as enemySpec} from './data.js?v=0.8.0-issue17-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
+import {aiProfile,LURE_WAKE,LURE_LEASH,LINE_REACH,LINE_REACH_RANGED,LINE_FOCUS_PENALTY} from './trial-profiles.js?v=trial92';
 export const WEATHER={clear:{label:'雨なし',foot:0,horse:0},light:{label:'小雨',foot:2,horse:3},heavy:{label:'大雨',foot:3,horse:4}};
 export function weatherAt(s,turn=s.turn){const cycle=s.map.weatherCycle;return cycle?.[(turn-1)%cycle.length]||'clear';}
 export function movement(s,u){const weather=WEATHER[weatherAt(s)];return Math.max(1,u.move-weather[u.type==='horse'?'horse':'foot']);}
@@ -175,17 +176,26 @@ export function prepareEnemy(s){if(s.phase!==1||s.status!=='playing')return fals
 // Optional observers receive settled individual actions; UI playback never changes rules.
 export function enemyPhase(s,observe=()=>{}){
  if(s.phase!==2||s.status!=='playing')return;
+ // Trial profiles (#93) exist only on the standalone comparison screen; campaign state has no s.trial.
+ const ai=aiProfile(s),focused=new Set();
  for(const e of alive(s,'enemy')){if(s.status!=='playing')break;
  const friends=alive(s,'ally');let positions=reachable(s,e,e.ai==='hold'?0:movement(s,e));const home=s.map.enemies.find(a=>a.id===e.id)||e;
  if(e.ai==='defend')positions=positions.filter(p=>dist(p,home)<=3);
+ const trial=ai!=='current'&&!['hold','raid'].includes(e.ai);let returnHome=false;
+ if(trial&&ai==='line'){positions=positions.filter(p=>dist(p,home)<=(e.range[1]>1?LINE_REACH_RANGED:LINE_REACH));returnHome=true;}
+ if(trial&&ai==='lure'){
+  if(!e.trialAwake&&friends.some(a=>dist(a,home)<=LURE_WAKE))e.trialAwake=true;
+  if(e.trialAwake&&!friends.some(a=>dist(a,home)<=LURE_LEASH+e.range[1])){returnHome=true;if(dist(e,home)===0)e.trialAwake=false;}
+  positions=e.trialAwake?positions.filter(p=>dist(p,home)<=LURE_LEASH):positions.filter(p=>dist(p,e)===0);
+ }
  if(e.ai==='skirmish'){const nearby=friends.filter(a=>a.x<9);if(!nearby.length)continue;}
  if(e.ai==='raid'&&s.map.base&&positions.some(p=>dist(p,s.map.base)===0)){moveUnit(s,e,s.map.base,observe);log(s,`${e.name}が本陣へ突入`);checkOutcome(s);observe(s,e,{kind:'settled',actor:e.id});continue;}
  const targets=e.ai==='skirmish'?friends.filter(a=>a.x<9):friends;
- const shots=[];for(const p of positions)for(const t of targets)if(inRange({...e,...p},t))shots.push({p,t,score:(damage(s,e,t)>=t.hp?100:0)+(e.ai==='raid'&&['healer','medic','bow'].includes(t.type)?12:0)+damage(s,e,t)-t.hp/10});
+ const shots=[];for(const p of positions)for(const t of targets)if(inRange({...e,...p},t))shots.push({p,t,score:(damage(s,e,t)>=t.hp?100:0)+(e.ai==='raid'&&['healer','medic','bow'].includes(t.type)?12:0)+damage(s,e,t)-t.hp/10-(trial&&ai==='line'&&focused.has(t.id)&&damage(s,e,t)<t.hp?LINE_FOCUS_PENALTY:0)});
  shots.sort((a,b)=>b.score-a.score||a.p.cost-b.p.cost||a.t.y-b.t.y||a.t.x-b.t.x||a.p.y-b.p.y||a.p.x-b.p.x);
- if(shots.length){const {p,t}=shots[0];moveUnit(s,e,p,observe);const hp=t.hp;strike(s,e,t,0,true,observe);if(t.hp<hp)t.hurtTurn=s.turn;}
+ if(shots.length){const {p,t}=shots[0];moveUnit(s,e,p,observe);const hp=t.hp;strike(s,e,t,0,true,observe);if(t.hp<hp)t.hurtTurn=s.turn;focused.add(t.id);}
  else if(e.ai!=='hold'){
-  const goal=e.ai==='raid'&&s.map.base?s.map.base:[...targets].sort((a,b)=>dist(e,a)-dist(e,b)||a.y-b.y||a.x-b.x)[0];
+  const goal=returnHome?(dist(e,home)?home:null):e.ai==='raid'&&s.map.base?s.map.base:[...targets].sort((a,b)=>dist(e,a)-dist(e,b)||a.y-b.y||a.x-b.x)[0];
   if(goal){ // Global distance field avoids getting stuck behind a river or a wall.
    const field=distanceField(s,goal,e.team);positions.sort((a,b)=>(field.get(key(a))??Infinity)-(field.get(key(b))??Infinity)||a.cost-b.cost||a.y-b.y||a.x-b.x);
    if(positions[0]&&Number.isFinite(field.get(key(positions[0]))))moveUnit(s,e,positions[0],observe);

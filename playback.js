@@ -1,6 +1,7 @@
 import {weaponProfile,isBossUnit} from './weapon-fx.js?v=0.8.0-weapon48';
 import {feedbackStyle} from './combat-fx.js?v=0.8.0-fx39';
 import {gemPlan,gemHP,gemSchedule} from './gem-effects.js?v=0.8.0-gems28';
+import {weightySchedule} from './trial-profiles.js?v=trial92';
 // Only presentation lives here; all rules have already resolved synchronously.
 export function tween(duration,update){
  if(!duration||document.hidden){update(1);return Promise.resolve();}
@@ -15,7 +16,7 @@ export function tween(duration,update){
   };step();
  });
 }
-export function createPlayback({getState,setState,view,draw,sound,isFast,isReduced,onMessage=()=>{},onCombat=()=>{}}){
+export function createPlayback({hitProfile=()=>'current',getState,setState,view,draw,sound,isFast,isReduced,onMessage=()=>{},onCombat=()=>{}}){
  const duration=(normal,quick=0,still=0)=>document.hidden||isFast()?quick:isReduced()?still:normal;
  const clear=()=>{for(const k of ['motion','projectile','effect','flash','ghost','active','animation','jewel','impact','stepLanding','strike','bossBreak'])view[k]=null;};
  async function play(frames){
@@ -65,7 +66,9 @@ export function createPlayback({getState,setState,view,draw,sound,isFast,isReduc
     const armoured=!heal&&!!(target.def||target.guard||target.specialty==='guard'&&target.command);
     const plan=gemPlan(target.hp,afterTarget?.hp??target.hp,event.amount,{heal,armoured,ally:target.team==='ally'});
     const bossLethal=isBossUnit(target)&&plan.lethal;
-    const speed=gemSchedule(plan,isFast(),isReduced());
+    const base=gemSchedule(plan,isFast(),isReduced());
+    // Trial hit feel B (#94): a short hold and linger on ordinary hits, never in Fast/Reduced.
+    const speed=hitProfile()==='weighty'?weightySchedule(plan,base,{fast:isFast(),reduced:isReduced(),heal}):base;
     const style=feedbackStyle({...plan,fast:isFast(),reduced:isReduced()});
     const impactPosition={id:target.id,x:target.x,y:target.y,dx:actor?Math.sign(target.x-actor.x):0,dy:actor?Math.sign(target.y-actor.y):0,style};
     const showImpact=(kind,progress)=>{view.impact={...impactPosition,kind,progress};draw();};
