@@ -70,7 +70,8 @@ The human producer wants ideas thrown in at lunch to be playable on GitHub Pages
 
 ## Issue #29 castle opening (integrated into main)
 - All allied characters begin in the castle reserve; zero on-board allies at map start. Players tap castle, choose the glyph/name, and gesture from the castle to their destination. Turn 1 permits two voluntary sorties; later turns permit one, board maximum remains five. No resource, state, or save changes before command validation.
-- Only committed `deployAndAct` emits a `deploy` observer with the opening line; playback reveals the actor at the gate, sounds two short metallic clanks, shows a one-line subtitle, and *then* replays movement/combat. Disable/shorten animation in Fast/Reduced Motion modes, preserve input lock and save atomicity. The actual line is a provisional plain string, not spoken audio.
+- Only committed `deployAndAct` emits a `deploy` observer (its provisional `line` field stays in the event data). Since Issue #96 (owner decision 2026-10-31) playback shows **no subtitle and adds no wait**: the short gate clank overlaps the first step and the sortie then moves/attacks like any other order. Preserve input lock and save atomicity.
+- Issue #96 also removes the Attack button for allied specialists (healing mages, artillery), renames end turn to 「敵フェーズへ（未行動n）」 counting board units only, and offers 「未行動の部隊へ戻る」 in the confirmation. Trial A (menu toggle 「移動操作」, default off) lets a unit slide released on a legal empty tile move+wait at once and a still 0.2s hold wait in place; the default keeps rule 9 below.
 - Existing P3 specialist rules from PR #27 still apply. PR #31 was originally stacked on that branch; the combined work is now in main through PR #33. Do not reapply the historical branches.
 - Historical 2-ally placement tests can seed old positions explicitly; production `createGame` must start with no deployed ally.
 
