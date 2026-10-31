@@ -385,7 +385,7 @@ a{color:#e4c8f0}
 
 /* Trial controls never change the fixed battlefield/dock geometry. */
 .trial-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0}
-.trial-grid button{min-height:48px;padding:7px 5px;line-height:1.4}
+.trial-grid button{min-height:48px;padding:7px 4px;line-height:1.4;font-size:clamp(11px,3.4vw,14px);text-wrap:balance}
 #tacticalLabCanvas{display:block;max-width:100%;height:auto!important;margin:0 auto;background:#243746;image-rendering:pixelated}
 .direct-sortie{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 #modal:has(#deploymentList){max-height:64dvh;margin-block:auto 12px}

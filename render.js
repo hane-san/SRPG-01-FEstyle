@@ -1,4 +1,5 @@
 import {paintFantasyTerrain,paintFantasyCamp,FANTASY_COLORS,paintThemedUnit} from './fantasy-theme.js?v=trial90';
+import {LURE_WAKE} from './trial-profiles.js?v=trial92';
 import {paintIndustrialTerrain,paintIndustrialCamp,INDUSTRIAL_COLORS} from './sample-theme.js?v=sample76';
 import {weaponFrame,bossFracture,isBossUnit} from './weapon-fx.js?v=0.8.0-weapon48';
 import {impactFrame,landingFrame} from './combat-fx.js?v=0.8.0-fx39';
@@ -38,7 +39,7 @@ function layers(canvas,s,view){
   cache.rangeKey=rangeKey;cache.rangeBuilds++;
  }
  // HP, ammo, permission and focus decide the P3 mark (Issue #79) and invalidate the board.
- const boardKey=JSON.stringify([rangeKey,view.dest,!!view.menu,!!view.target,!!view.sortie,selected?.charges,selected?.spend,selected?.focus,s.units.map(u=>u.hp),s.warnings,s.map.goal,s.map.base,s.map.camp,s.map.south,s.southTaken]);
+ const boardKey=JSON.stringify([s.trial?.ai,s.units.map(u=>u.trialAwake?1:0),rangeKey,view.dest,!!view.menu,!!view.target,!!view.sortie,selected?.charges,selected?.spend,selected?.focus,s.units.map(u=>u.hp),s.warnings,s.map.goal,s.map.base,s.map.camp,s.map.south,s.southTaken]);
  if(cache.boardKey!==boardKey){
   if(!cache.board||cache.board.width!==cache.terrain.width||cache.board.height!==cache.terrain.height)cache.board=surface(s);
   const c=cache.board.getContext('2d');c.clearRect(0,0,cache.board.width,cache.board.height);c.drawImage(cache.terrain,0,0);
@@ -95,6 +96,12 @@ function paintTactics(c,s,view,selected,{moves,attacks,danger}){
    c.fillStyle=heal?'#2f7c63e6':'#6b4592e6';c.fillRect(x+1,y+21,17,10);
    c.fillStyle='#fff2cd';c.font='bold 7px sans-serif';c.textAlign='center';c.fillText(heal?'P3+':'P3',x+9.5,y+29);
   }
+ }
+ // Trial lure (#93): the dotted ring is the area that wakes a waiting enemy.
+ if(s.trial?.ai==='lure')for(const e of alive(s,'enemy')){
+  if(e.trialAwake||['hold','raid'].includes(e.ai))continue;const home=s.map.enemies.find(a=>a.id===e.id)||e;
+  c.fillStyle='#ffd58acc';
+  for(let dy=-LURE_WAKE;dy<=LURE_WAKE;dy++){const dx=LURE_WAKE-Math.abs(dy);for(const x of new Set([home.x-dx,home.x+dx])){const y=home.y+dy;if(x>=0&&y>=0&&x<s.map.w&&y<s.map.h){c.fillRect(x*32+14,y*32+14,4,4);}}}
  }
  for(const w of s.warnings)for(const p of w.cells){c.strokeStyle=w.kind==='cannon'?'#ffdfb0':'#e0b9f2';c.lineWidth=2;c.strokeRect(p.x*32+2,p.y*32+2,28,28);c.fillStyle=w.kind==='cannon'?'#b34545bb':'#79568ebb';c.fillRect(p.x*32+3,p.y*32+3,26,8);c.fillStyle='#fff2cd';c.font='bold 7px sans-serif';c.textAlign='center';c.fillText(w.kind==='cannon'?`P4 −${RULES.barrageDamage}`:`増援T${w.turn}`,p.x*32+16,p.y*32+10);}
  if(s.map.camp&&s.map.tiles[s.map.camp.y]?.[s.map.camp.x]!=='c'){const x=s.map.camp.x*32,y=s.map.camp.y*32;if(view.sampleTheme==='industrial')paintIndustrialCamp(c,x,y);else if(view.sampleTheme==='fantasy')paintFantasyCamp(c,x,y);else castle(c,x,y);}
