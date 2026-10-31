@@ -6,13 +6,13 @@ import {appendChapter,chronicleLines} from './chronicle.js?v=0.8.0-war43';
 import {RELEASE,SKILLS,PROMOTIONS,RULES,CLASS_ROLES} from './config.js?v=0.8.0-p3-26-sortie29-classes68';
 import {MAPS} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
-import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79';
+import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96';
 import {bindMapInput,createHoldLock,bindReserveInput} from './ui-input.js?v=trial90';
 import {readSave,writeSave} from './save.js?v=0.8.0-p3-26-save37-war43-classes68';
 import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import {createAudio} from './audio.js?v=0.8.0-issue17-sortie29-issue24-gems28-flick35-weapon48';
 import {createMusic,buildTrack,SCORES,BONUS_SCORES,MUSIC_LIBRARY,trackNumber,assignedTrackNumber,trackByNumber} from './music.js?v=0.8.0-library42';
-import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48';
+import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-ui96';
 import {DISPLAY_NAME} from './display-name.js?v=0.8.0-display-2fb0ebb2368b';
 const $=id=>document.getElementById(id),canvas=$('battlefield'),vp=$('mapViewport');
 // The preview is a separate, nonpersistent URL session. Normal saves are never read/written here.
@@ -119,7 +119,7 @@ function refresh(){
  $('forecast').dataset.level=signals.level;
  const ready=E.alive(s,'ally').filter(u=>!u.acted).length;
  $('moveUndo').hidden=locked||!!view.dragging||!pendingUndo||s.phase!==1||s.status!=='playing';
- $('endTurn').disabled=locked||view.dragging||s.status!=='playing';$('endTurn').textContent=locked?'進行中…':`命令終了 (${ready}) →`;
+ $('endTurn').disabled=locked||view.dragging||s.status!=='playing';$('endTurn').textContent=locked?'進行中…':ready?`敵フェーズへ（未行動${ready}）`:'敵フェーズへ →';
  $('nextUnit').disabled=locked||view.dragging||s.status!=='playing'||!ready;
  $('soundBtn').textContent=sound.enabled?'SE ON':'SE OFF';$('soundBtn').setAttribute('aria-pressed',String(sound.enabled));
  $('menuBtn').disabled=locked||!!view.dragging;$('dangerBtn').setAttribute('aria-pressed',String(view.danger));
@@ -171,13 +171,14 @@ function panel(){
   const bar=(hp,max,kind)=>`<div class="hp-track ${kind}" aria-hidden="true"><i style="width:${Math.max(0,hp/max*100)}%"></i></div>`;
   pre.innerHTML=`<div class="forecast-side ally"><span>自HP ${u.hp} → ${p.allyAfter}</span>${bar(p.allyAfter,u.maxHp,'ally')}<small class="${p.allyAfter===0?'fatal':''}">反撃 ${p.counter}${p.allyAfter===0?' · ⚠ 離脱':''}</small></div><div class="forecast-side enemy"><span>敵HP ${target.hp} → ${p.enemyAfter}</span>${bar(p.enemyAfter,target.maxHp,'enemy')}<small>攻撃 ${p.damage}${p.enemyAfter===0?' · 撃破':u.type==='bow'?' · 隣接不可':u.type==='shooter'?' · 距離3は1':''}</small></div>`;
  }
- else{const command=E.waitCommand(u,dest);pre.textContent=(s.map.base&&E.dist(u,s.map.base)===0&&E.dist(dest,u)>0?'本陣から離れます ／ ':'')+(u.type==='bow'?'弓2マス・隣接不可 ／ ':u.type==='shooter'?'砲兵は移動せずP3砲撃 ／ ':u.skill==='heal'?'魔術師系は移動せずP3治療 ／ ':'')+(command&&!u.spend?'待機：弾薬温存・P3なし':command==='heal'?'待機：P3回復・P2反撃なし':command==='support'?'待機：P3攻撃・P2反撃なし':u.maxCharges&&u.charges<=0&&E.dist(dest,u)===0?'待機：弾薬0・P3なし':'待機：P3なし');}
+ else{const command=E.waitCommand(u,dest);pre.textContent=(s.map.base&&E.dist(u,s.map.base)===0&&E.dist(dest,u)>0?'本陣から離れます ／ ':'')+(u.type==='bow'?'弓2マス・隣接不可 ／ ':u.type==='shooter'?'砲兵は移動せずP3砲撃 ／ ':u.skill==='heal'?'魔術師系は移動せずP3治療 ／ ':'')+(!E.canNormalAttack(u)&&E.dist(dest,u)>0?'移動待機：このターンP3なし':command&&!u.spend?'待機：弾薬温存・P3なし':command==='heal'?'待機：P3回復・P2反撃なし':command==='support'?'待機：P3攻撃・P2反撃なし':u.maxCharges&&u.charges<=0&&E.dist(dest,u)===0?'待機：弾薬0・P3なし':'待機：P3なし');}
  root.append(pre);
  const row=document.createElement('div');row.className='command-row';
  if(u.team==='ally'&&!u.acted){
-  const attack=button('攻撃',()=>commit('attack'),'attack primary');attack.id='attackOrder';attack.disabled=!E.canNormalAttack(u)||!target||!!view.dragging;attack.setAttribute('aria-label','攻撃');
+  // Issue #96: specialists (healing mages, artillery) never show an Attack they cannot use.
+  const attack=E.canNormalAttack(u)?button('攻撃',()=>commit('attack'),'attack primary'):null;if(attack){attack.id='attackOrder';attack.disabled=!target||!!view.dragging;attack.setAttribute('aria-label','攻撃');}
   const preparing=E.waitCommand(u,dest);
-  const wait=button(preparing?'待機\n無反撃':'待機',()=>commit('wait'),'primary');wait.title=preparing?'その場で待機：P3準備・P2反撃なし':'通常待機：P3なし';wait.setAttribute('aria-label',wait.title);wait.id='waitOrder';wait.disabled=!!view.dragging;row.append(attack,wait);if(s.map.camp&&E.dist(u,s.map.camp)<=1)row.append(button('帰還',()=>{const result=E.returnToReserve(s,u.id);if(result.ok){pendingUndo=null;lastNotice={title:'帰還',text:`${u.name}は予備隊に戻りました`};resetSelection();save();refresh();}},'subtle'));row.append(button('戻る',cancelDraft,'subtle'));
+  const wait=button(preparing?'待機\n無反撃':'待機',()=>commit('wait'),'primary');wait.title=preparing?'その場で待機：P3準備・P2反撃なし':'通常待機：P3なし';wait.setAttribute('aria-label',wait.title);wait.id='waitOrder';wait.disabled=!!view.dragging;if(attack)row.append(attack);row.append(wait);if(s.map.camp&&E.dist(u,s.map.camp)<=1)row.append(button('帰還',()=>{const result=E.returnToReserve(s,u.id);if(result.ok){pendingUndo=null;lastNotice={title:'帰還',text:`${u.name}は予備隊に戻りました`};resetSelection();save();refresh();}},'subtle'));row.append(button('戻る',cancelDraft,'subtle'));
   if(targets.length>1){const cycle=button('対象 ↻',()=>{const i=targets.findIndex(t=>t.id===view.target);view.target=targets[(i+1)%targets.length].id;view.attackError=null;sound.play('cursor');refresh();},'subtle');cycle.id='targetCycle';cycle.setAttribute('aria-label','次の攻撃対象');row.append(cycle);}
  }else row.append(button('解除',()=>{resetSelection();refresh();},'subtle'));
  row.append(button('詳細',()=>unitDetails(u),'subtle'));row.style.setProperty('--choices',row.childElementCount);root.append(row);
@@ -282,11 +283,17 @@ function beginMapGesture(clientX,clientY){
  const existingArrow=!!anchor;
  // No enemy-start or unrelated-cell gesture is a direct attack confirmation.
  const directAttackGesture=!!(pressed?.team==='ally'&&!pressed.acted||destinationPress||fromChosenEndpoint||sortieOrigin);
+ const unitOrigin=directMove&&pressed?.team==='ally'&&!pressed.acted;
  if(pressed?.team==='ally'&&!pressed.acted){u=pressed;if(!anchor)selectUnit(u);}
  else if(!ready||(!destinationPress&&pressed?.team!=='enemy'&&!sortieOrigin&&!anchor))return {pan:true,tap:()=>{if(ready)cancelDraft();else mapTap(clientX,clientY);}};
  if(destinationPress&&!anchor){draftMove(u,p);anchor={dest:{...view.dest},route:[...view.route]};}
  view.dragging=true;view.destinationPress=destinationPress;view.menu=false;view.moveArmed=false;refresh();vp.focus({preventScroll:true});
- let lastCell=null,lockAnchor=false;
+ let lastCell=null,lockAnchor=false,stayArmed=false;
+ const stayTimer=unitOrigin?setTimeout(()=>{
+  if(!view.dragging||view.invalid||(lastCell&&lastCell!==E.key(u)))return;
+  stayArmed=true;view.moveArmed=true;sound.play('lock');placeOrders();draw();
+ },200):null;
+ const dropStay=()=>{clearTimeout(stayTimer);if(stayArmed){stayArmed=false;view.moveArmed=false;}};
  const hold=createHoldLock(200,()=>{
   if(!view.dragging||view.invalid||view.target||view.attackError||!view.dest||E.dist(u,view.dest)===0)return;
   if(!anchor){anchor={dest:{...view.dest},route:[...view.route]};lockAnchor=true;}
@@ -295,6 +302,7 @@ function beginMapGesture(clientX,clientY){
  const update=(x,y,release=false)=>{
   const point=mapPoint(x,y),cell=E.key(point),enemy=E.at(s,point)?.team==='enemy';
   if(!release&&cell===lastCell)return;lastCell=cell;
+  if(cell!==E.key(u))dropStay();
   // Once locked, preserve the exact endpoint through intervening empty cells
   // on the way to a ranged target; release away from endpoint/enemy cancels.
   if(anchor&&!enemy){
@@ -319,15 +327,19 @@ function beginMapGesture(clientX,clientY){
   }
   placeOrders();draw();
  };
- const restore=()=>{hold.reset();for(const k of Object.keys(view))if(!(k in before))delete view[k];Object.assign(view,before);refresh();};
+ const restore=()=>{hold.reset();dropStay();for(const k of Object.keys(view))if(!(k in before))delete view[k];Object.assign(view,before);refresh();};
  const end=(x,y)=>{
   const point=mapPoint(x,y),enemy=E.at(s,point)?.team==='enemy';
   // Classify release while the lock is still armed; no command can fire on cancel.
-  const quick=hold.armed;update(x,y,true);
+  const quick=hold.armed,stay=stayArmed;clearTimeout(stayTimer);update(x,y,true);
   view.dragging=false;view.destinationPress=false;view.moveArmed=false;hold.reset();
   // A deliberate enemy release is the confirmation: no 200ms hold and no
   // second attack button. Engine legality is still checked inside commit().
   if(enemy&&view.target&&!view.invalid&&!view.attackError&&directAttackGesture){commit('attack');return;}
+  if(unitOrigin&&!view.invalid&&!view.attackError&&!view.target){
+   if(stay&&E.dist(view.dest,u)===0){commit('wait');return;}
+   if(!enemy&&E.dist(view.dest,u)>0&&E.key(view.dest)===E.key(point)){commit('wait');return;}
+  }
   if(quick&&!view.invalid&&!view.attackError&&!view.sortie){
    if(!enemy&&!view.target&&E.key(view.dest)===E.key(point)&&E.dist(u,view.dest)>0){commit('wait');return;}
    sound.play('cancel');restore();return;
@@ -339,7 +351,9 @@ function beginMapGesture(clientX,clientY){
   openDraft();
  };
  const tap=(x,y)=>{
-  hold.reset();
+  hold.reset();const stay=stayArmed;clearTimeout(stayTimer);
+  // Trial A: a still 0.2s hold on the unit is an explicit wait in place.
+  if(unitOrigin&&stay&&!view.invalid){view.dragging=false;view.moveArmed=false;view.dest={x:u.x,y:u.y};view.target=null;commit('wait');return;}
   if(same){view.dragging=false;cancelDraft();return;}
   // Tapping an enemy is a deliberate *preview*, not a release-confirmed
   // attack. Keep the old "no reachable approach" explanation on taps.
@@ -386,9 +400,16 @@ vp.addEventListener('keydown',ev=>{
 });
 $('minimap').onclick=ev=>{const r=ev.target.getBoundingClientRect();recenter({x:(ev.clientX-r.left)/r.width*s.map.w,y:(ev.clientY-r.top)/r.height*s.map.h});};
 $('objective').onclick=()=>modal(`<h2>${s.map.title}</h2><p>${s.map.briefing}</p><p>勝利：味方が北城へ移動して制圧。${s.map.base?'敗北：敵が本陣に侵入。':''}</p><p>${campaign?'連戦':'単体マップ'} / ${s.settings.mode==='classic'?'クラシック':'カジュアル'}。砲撃・増援の確報は戦場の上端とマップ上に表示します。</p>`);
-function askEnd(){if(locked||s.status!=='playing')return;const unacted=E.alive(s,'ally').filter(a=>!a.acted);
+// Issue #96: the confirmation counts board units only (reserves are not "unacted"), says
+// exactly which specialists will prepare P3, and offers a way back to the next unit.
+function askEnd(){if(locked||s.status!=='playing'||view.dragging)return;const unacted=E.alive(s,'ally').filter(a=>!a.acted);
  if(!unacted.length){runTurn();return;}
- modal(`<h2>命令を終えますか？</h2><p>未操作 ${unacted.length}部隊は、その場で待機します。砲兵・魔術師系だけは弾薬があればP3行動を準備します。</p><p>Ⅱ 敵行動 → Ⅲ 待機支援 → Ⅳ 戦場イベント。砲兵・魔術師系はP1攻撃とP2反撃ができません。</p><div id="endConfirm"></div>`);$('endConfirm').append(button('敵フェーズへ進む',()=>{close();runTurn();},'primary wide'));
+ const arming=unacted.filter(a=>E.waitCommand(a,a)&&a.spend),idle=unacted.filter(a=>!E.canNormalAttack(a)&&!arming.includes(a));
+ const p3=arming.length?`P3準備：${arming.map(a=>escapeHTML(a.name)).join('、')}。`:'';
+ const none=idle.length?`P3なし（弾薬0・温存）：${idle.map(a=>escapeHTML(a.name)).join('、')}。`:'';
+ const sortie=E.canDeploy(s)?`<p class="hint">出撃はあと${E.deploymentLimit(s)-s.deployedThisTurn}隊できます（出さなくても進めます）。</p>`:'';
+ modal(`<h2>敵フェーズへ進みますか？</h2><p>盤上の未行動 ${unacted.length}部隊は、その場で待機します。${p3}${none}</p>${sortie}<p>Ⅱ 敵行動 → Ⅲ 待機支援 → Ⅳ 戦場イベント。</p><div id="endConfirm"></div>`);
+ $('endConfirm').append(button('敵フェーズへ進む',()=>{close();runTurn();},'primary wide'),button('未行動の部隊へ戻る',()=>{close();nextUnit();},'subtle wide'));
 }
 $('endTurn').onclick=askEnd;
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -430,6 +451,9 @@ function selectSortie(u,centerOnCastle=true){
  sound.play('select');refresh();if(centerOnCastle)recenter({x:s.map.camp.x+.5,y:s.map.camp.y+.5});draw();vp.focus({preventScroll:true});
 }
 let directSortie=true,releaseReserveInput=null;
+// Issue #96 trial A: a unit slide released on a legal empty tile moves and waits at once
+// (like a castle sortie); a 0.2s still hold on the unit waits in place. Opt-in for comparison.
+let directMove=false;try{directMove=localStorage.getItem('field-command-direct-move')==='true';}catch{}
 try{directSortie=localStorage.getItem('field-command-direct-sortie')!=='false';}catch{}
 function beginReserveGesture(id){
  if(locked||!E.canDeploy(s))return null;
@@ -489,6 +513,10 @@ function addTrialControls(root,compare=false){
   }
   section.append(row);
  }
+ const moveMode=button(directMove?'移動操作：離すと移動・長押しで待機（試作A）':'移動操作：従来（0.2秒保持で移動）',()=>{
+  directMove=!directMove;try{localStorage.setItem('field-command-direct-move',String(directMove));}catch{}
+  showMenu();
+ },'wide subtle');moveMode.id='directMoveToggle';moveMode.setAttribute('aria-pressed',String(directMove));section.append(moveMode);
  const mode=button(directSortie?'出撃操作：アイコンから直接スライド':'出撃操作：従来のタップ→城からスライド',()=>{
   directSortie=!directSortie;try{localStorage.setItem('field-command-direct-sortie',String(directSortie));}catch{}
   showMenu();
