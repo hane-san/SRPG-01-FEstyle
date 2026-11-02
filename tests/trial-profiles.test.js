@@ -60,3 +60,33 @@ test('hit-feel B adds a short hold and linger to ordinary hits only',()=>{
  const heavy=gemPlan(6,3,3,{heavy:true});
  if(heavy.heavy)assert.deepEqual(weightySchedule(heavy,gemSchedule(heavy)),gemSchedule(heavy));
 });
+
+// Issue #101: number first, then one gem per beat; more damage is denser, not longer.
+import {crystalSchedule,enemyBeat,lowHpPulse,DEFAULT_HIT,HIT_PROFILES} from '../trial-profiles.js';
+test('crystal: a 2-damage hit settles in about half to seven tenths of a second',()=>{
+ assert.equal(DEFAULT_HIT,'crystal');assert.ok(HIT_PROFILES.crystal&&HIT_PROFILES.current&&HIT_PROFILES.weighty);
+ const plan=gemPlan(6,4,2,{}),s=crystalSchedule(plan,gemSchedule(plan));
+ const total=s.hitStopMs+s.firstDelayMs+s.intervalMs*plan.count+s.finishMs;
+ assert.ok(s.crystal&&total>=450&&total<=700,`2 damage: ${total}ms`);
+ for(const [start,end,amount] of [[6,5,1],[6,3,3],[6,2,4],[6,0,6]]){
+  const p=gemPlan(start,end,amount,{}),t=crystalSchedule(p,gemSchedule(p));
+  const ms=t.hitStopMs+t.firstDelayMs+t.intervalMs*p.count+t.finishMs;
+  assert.ok(ms<=800,`${amount} damage stays bounded: ${ms}ms`);
+ }
+});
+test('crystal leaves Fast, Reduced Motion and heals on their own timing',()=>{
+ const plan=gemPlan(6,4,2,{}),fast=gemSchedule(plan,true),reduced=gemSchedule(plan,false,true);
+ assert.equal(crystalSchedule(plan,fast,{fast:true}).crystal,false);
+ assert.equal(crystalSchedule(plan,fast,{fast:true}).intervalMs,fast.intervalMs);
+ assert.equal(crystalSchedule(plan,reduced,{reduced:true}).finishMs,reduced.finishMs);
+ const heal=gemPlan(2,4,2,{heal:true});assert.equal(crystalSchedule(heal,gemSchedule(heal),{heal:true}).crystal,false);
+});
+test('the enemy-phase beat is short and absent in Fast/Reduced Motion or the ally phase',()=>{
+ assert.ok(enemyBeat({enemyPhase:true})>=120&&enemyBeat({enemyPhase:true})<=220);
+ assert.equal(enemyBeat({enemyPhase:true,fast:true}),0);assert.equal(enemyBeat({enemyPhase:true,reduced:true}),0);
+ assert.equal(enemyBeat({enemyPhase:false}),0);
+});
+test('the HP1 pulse is gentle and becomes a still ring under Reduced Motion',()=>{
+ for(let t=0;t<3000;t+=125){const p=lowHpPulse(t);assert.ok(p.amount>=0&&p.amount<=1&&!p.static);}
+ assert.deepEqual(lowHpPulse(400,true),{static:true,amount:0});
+});
