@@ -1,4 +1,6 @@
-import {openTacticalLab} from './tactical-lab.js?v=trial90-mixed107';
+import {openTacticalLab} from './tactical-lab.js?v=trial90-mixed107-polygon109';
+import {polygonTheme,polygonStats,polygonContext,releasePolygon} from './polygon-renderer.js?v=polygon109';
+import {silhouetteCell,screenToCell} from './polygon-space.js?v=polygon109';
 import {AI_PROFILES,HIT_PROFILES,DEFAULT_HIT,lowHpPulse,mixedRole,roleNote} from './trial-profiles.js?v=mixed107';
 import {riskCue,hasAnnouncedCannon,combatCue,thumbSide,buildThreatIndex,indexedThreat,warningFocus} from './tactical-ui.js?v=0.8.0-ui55-warnjump-mixed107';
 import {hudSignals,routeIntent} from './ui-hud.js?v=0.8.0-hud50';
@@ -7,7 +9,7 @@ import {appendChapter,chronicleLines} from './chronicle.js?v=0.8.0-war43';
 import {RELEASE,SKILLS,PROMOTIONS,RULES,CLASS_ROLES} from './config.js?v=0.8.0-p3-26-sortie29-classes68';
 import {MAPS} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-trial92-mixed107';
-import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96-trial92-art97-crystal101-mixed107';
+import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96-trial92-art97-crystal101-mixed107-polygon109';
 import {bindMapInput,createHoldLock,bindReserveInput} from './ui-input.js?v=trial90';
 import {readSave,writeSave} from './save.js?v=0.8.0-p3-26-save37-war43-classes68';
 import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107';
@@ -25,7 +27,7 @@ const SAMPLE_SCENES={
 const sampleCode=new URLSearchParams(location.search).get('sample');
 const sampleScene=Object.hasOwn(SAMPLE_SCENES,sampleCode)?SAMPLE_SCENES[sampleCode]:null;
 const sampleMode=!!sampleScene;
-const STYLES={original:'現行',industrial:'工業幻想',fantasy:'古典ファンタジー'};
+const STYLES={original:'現行2D',industrial:'工業幻想・3D',fantasy:'古典ファンタジー・3D'};
 // Issues #92-#94: the trial screen compares enemy AI and hit feel from one checkpoint.
 // Profiles live in the URL and on s.trial only here; the campaign never sees them.
 const trialParams=new URLSearchParams(location.search);
@@ -80,7 +82,7 @@ const escapeHTML=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 let stored=null;try{if(!sampleMode)stored=readSave(localStorage,RELEASE,MAPS);}catch{/* storage may be disabled */}
 if(stored){s=stored.state;campaign=stored.campaign;settings=s.settings;}else s=decoratePreview(E.createGame(sampleScene?.id??0,settings));
 function save(state=s){if(sampleMode)return;try{writeSave(localStorage,RELEASE,state,campaign);}catch{}}
-function modal(html,canClose=true){music.stopPreview();$('modalBody').innerHTML=html;$('closeModal').hidden=!canClose;if(!$('modal').open)$('modal').showModal();$('modal').scrollTop=0;}
+function modal(html,canClose=true){music.stopPreview();const lab=$('tacticalLabCanvas');if(lab)releasePolygon(lab);$('modalBody').innerHTML=html;$('closeModal').hidden=!canClose;if(!$('modal').open)$('modal').showModal();$('modal').scrollTop=0;}
 function close(){music.stopPreview();$('modal').close();}
 $('modal').addEventListener('cancel',()=>music.stopPreview());
 $('modal').addEventListener('close',()=>music.stopPreview());
@@ -92,12 +94,24 @@ function center(){return {x:(vp.scrollLeft+vp.clientWidth/2)/view.tile,y:(vp.scr
 function recenter(p,warningVisit=false){if(!warningVisit)warningReturn=null;vp.scrollLeft=p.x*view.tile-vp.clientWidth/2;vp.scrollTop=p.y*view.tile-vp.clientHeight/2;updateWarningJump();}
 function fit(){lastSize={w:vp.clientWidth,h:vp.clientHeight};view.tile=Math.max(20,Math.floor(vp.clientWidth/s.map.w))*[1,1.4,1.9][zoom];$('zoomLabel').textContent=['全幅','×1.4','×1.9'][zoom];}
 function drawMini(){mini($('minimap'),s,vp,view.tile,view.sampleTheme);}
-function draw(){render(canvas,s,view);drawMini();}
+let polygonFallbackQueued=false;
+function polygonFallback(){
+ if(polygonFallbackQueued||!polygonTheme(view.sampleTheme))return;
+ polygonFallbackQueued=true;queueMicrotask(()=>{
+  polygonFallbackQueued=false;releasePolygon(canvas);previewStyle='original';view.sampleTheme='original';
+  canvas.setAttribute('aria-label','戦場。3Dを利用できないため2D表示に復帰しました');document.title=sampleScene.title+' — 現行2D（3D中断）';
+  const url=new URL(location.href);url.searchParams.set('style','original');history.replaceState(null,'',url);applyThemeMusic();
+  lastNotice={title:'3Dを利用できないため2Dへ復帰',text:view.polygonError||'描画が中断されました。戦況と命令は保持しています',tail:'試遊メニューから3Dを再選択できます'};
+  refresh();
+ });
+}
+canvas.addEventListener('polygonfailure',polygonFallback);
+function draw(){view.polygonReduced=reduced()||fast;render(canvas,s,view);drawMini();if(view.polygonError&&polygonTheme(view.sampleTheme))polygonFallback();}
 // Issue #101-C: redraw slowly only while an HP1 unit is on the board and the page is visible.
 setInterval(()=>{
- if(document.hidden)return;
+ if(document.hidden||$('modal').open)return;
  const low=E.alive(s).some(u=>u.hp===1);
- if(!low){if(view.lowHp){view.lowHp=null;draw();}return;}
+ if(!low){if(view.lowHp){view.lowHp=null;draw();}else if(polygonTheme(view.sampleTheme)&&!reduced()&&!fast&&!locked&&!view.dragging)draw();return;}
  view.lowHp=lowHpPulse(performance.now(),reduced());draw();
 },125);
 // Announced cells can sit outside a phone viewport: the banner says so and a tap pans there (explicit navigation, no rule effect).
@@ -280,7 +294,7 @@ function undoMove(){
 $('moveUndo').onclick=undoMove;
 function selectUnit(u,open=false){battleCard=null;lastNotice=null;view.sortie=false;view.sortieUnit=null;view.selected=u.id;view.dest={x:u.x,y:u.y};view.cursor={x:u.x,y:u.y};view.keyboard=false;view.action=null;view.target=null;view.menu=false;view.route=[];
  sound.play('select');view.attackError=null;if(open&&u.team==='ally'&&!u.acted)openDraft();else refresh();}
-function mapPoint(clientX,clientY){const r=canvas.getBoundingClientRect();return {x:Math.floor((clientX-r.left)/view.tile),y:Math.floor((clientY-r.top)/view.tile)};}
+function mapPoint(clientX,clientY){const r=canvas.getBoundingClientRect(),point={x:clientX-r.left,y:clientY-r.top};return polygonTheme(view.sampleTheme)?silhouetteCell(point,view.tile,E.alive(s)):screenToCell(point,view.tile);}
 function draftMove(u,p,anchor=null){
  const draft=slideDraft(s,u,p,anchor?.dest||view.dest||u,{preserve:!!anchor,route:anchor?.route});view.invalid=!draft;if(!draft)return false;
  const changed=E.key(draft.dest)!==E.key(view.dest||u)||draft.target!==view.target;
@@ -531,10 +545,11 @@ function addTrialControls(root,compare=false){
   const label=document.createElement('p');label.className='hint';label.textContent='同じ戦況・同じ位置で画風だけを切り替えます。';section.append(label);
   const row=document.createElement('div');row.className='trial-grid';row.id='styleChoices';
   for(const [id,label] of Object.entries(STYLES)){
-   const b=button(label,()=>{previewStyle=id;view.sampleTheme=id;applyThemeMusic();const url=new URL(location.href);url.searchParams.set('style',id);history.replaceState(null,'',url);document.title=`${sampleScene.title} — ${label}試遊`;close();draw();},'subtle');
+   const b=button(label,()=>{if(locked||view.dragging)return;previewStyle=id;view.sampleTheme=id;view.polygonError=null;canvas.setAttribute('aria-label',id==='original'?'2Dの戦場':'固定カメラの3D戦場');applyThemeMusic();const url=new URL(location.href);url.searchParams.set('style',id);history.replaceState(null,'',url);document.title=`${sampleScene.title} — ${label}試遊`;close();draw();},'subtle');
    b.dataset.style=id;b.setAttribute('aria-pressed',String(previewStyle===id));row.append(b);
   }
   section.append(row);
+  if(view.polygonError){const status=document.createElement('p');status.className='hint';status.setAttribute('role','status');status.textContent='3Dを利用できないため2D表示中です。戦況は維持しています。3Dの再選択で再試行できます。';section.append(status);}
  }
  const moveMode=button(directMove?'移動操作：離すと移動・長押しで待機（試作A）':'移動操作：従来（0.2秒保持で移動）',()=>{
   directMove=!directMove;try{localStorage.setItem('field-command-direct-move',String(directMove));}catch{}
@@ -652,8 +667,10 @@ function roster(){if(locked)return;modal('<h2>部隊表</h2><div id="rosterList"
 $('rosterBtn').onclick=roster;
 $('logBtn').onclick=()=>{if(locked)return;modal(`<h2>戦闘記録</h2><p>T${s.turn} / 再命令 ${s.metrics.commands} / 支援発動 ${s.metrics.supports} / 支援不発 ${s.metrics.misfires} / 消費 ${s.metrics.charges}</p><div id="export"></div><div id="logs"></div>`);$('export').append(button('検証記録をコピー',async()=>{const report=JSON.stringify({release:RELEASE,map:s.map.id,settings:s.settings,campaign,metrics:s.metrics,units:s.units,log:s.log},null,2);try{await navigator.clipboard.writeText(report);$('export').textContent='コピーしました';}catch{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([report],{type:'application/json'}));a.download='srpg-playtest.json';a.textContent='検証記録JSONを保存';$('export').append(a);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}}));for(const line of [...s.log].reverse()){const p=document.createElement('div');p.className='log-line';p.textContent=line;$('logs').append(p);}};
 window.addEventListener('resize',()=>{const p={x:(vp.scrollLeft+lastSize.w/2)/view.tile,y:(vp.scrollTop+lastSize.h/2)/view.tile};refresh();recenter(p);});
+window.addEventListener('pagehide',()=>releasePolygon(canvas));
+window.addEventListener('pageshow',()=>draw());
 // Explicit test controls are available only with ?debug=1; normal play has none.
-if(new URLSearchParams(location.search).has('debug'))window.srpgDebug={snapshot:()=>structuredClone(s),draft:()=>structuredClone(view),audio:()=>sound.snapshot(),music:()=>music.snapshot(),busy:()=>locked,select:id=>{const u=s.units.find(u=>u.id===id);if(u)selectUnit(u);},start:(id,opts={})=>{settings={...settings,...opts};start(id);}};
+if(new URLSearchParams(location.search).has('debug'))window.srpgDebug={snapshot:()=>structuredClone(s),draft:()=>structuredClone(view),audio:()=>sound.snapshot(),music:()=>music.snapshot(),polygon:()=>polygonStats(canvas),losePolygon:()=>polygonContext(canvas)?.getExtension('WEBGL_lose_context')?.loseContext(),busy:()=>locked,select:id=>{const u=s.units.find(u=>u.id===id);if(u)selectUnit(u);},start:(id,opts={})=>{settings={...settings,...opts};start(id);}};
 // Layout is already measured by refresh; finish initial centering before accepting input.
 refresh();home();
 if(!stored&&!sampleMode)showMenu();
