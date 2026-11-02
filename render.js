@@ -1,4 +1,5 @@
 import {paintFantasyTerrain,paintFantasyCamp,FANTASY_COLORS,paintThemedUnit} from './fantasy-theme.js?v=trial90-art97';
+import {polygonFrame} from './polygon-renderer.js?v=polygon109';
 import {LURE_WAKE,mixedRole} from './trial-profiles.js?v=mixed107';
 import {paintIndustrialTerrain,paintIndustrialCamp,INDUSTRIAL_COLORS} from './sample-theme.js?v=sample76-art97';
 import {weaponFrame,bossFracture,isBossUnit} from './weapon-fx.js?v=0.8.0-weapon48';
@@ -20,7 +21,7 @@ const PALETTES=[
 const caches=new WeakMap();
 export function renderStats(canvas){const c=caches.get(canvas);return c?{terrainBuilds:c.terrainBuilds,rangeBuilds:c.rangeBuilds,boardBuilds:c.boardBuilds}:null;}
 function surface(s){const c=document.createElement('canvas');c.width=s.map.w*32;c.height=s.map.h*32;return c;}
-function layers(canvas,s,view){
+function layers(canvas,s,view,polygon=false){
  let cache=caches.get(canvas);if(!cache){cache={terrainBuilds:0,rangeBuilds:0,boardBuilds:0};caches.set(canvas,cache);}
  const mapKey=JSON.stringify([s.map.id,s.map.w,s.map.h,s.map.tiles,view.sampleTheme||null]),weather=weatherAt(s);
  if(cache.mapKey!==mapKey){cache.terrain=surface(s);(view.sampleTheme==='industrial'?paintIndustrialTerrain(cache.terrain.getContext('2d'),s.map):view.sampleTheme==='fantasy'?paintFantasyTerrain(cache.terrain.getContext('2d'),s.map):paintTerrain(cache.terrain.getContext('2d'),s));cache.mapKey=mapKey;cache.terrainBuilds++;}
@@ -39,11 +40,11 @@ function layers(canvas,s,view){
   cache.rangeKey=rangeKey;cache.rangeBuilds++;
  }
  // HP, ammo, permission and focus decide the P3 mark (Issue #79) and invalidate the board.
- const boardKey=JSON.stringify([s.trial?.ai,s.units.map(u=>u.trialAwake?1:0),rangeKey,view.dest,!!view.menu,!!view.target,!!view.sortie,selected?.charges,selected?.spend,selected?.focus,s.units.map(u=>u.hp),s.warnings,s.map.goal,s.map.base,s.map.camp,s.map.south,s.southTaken]);
+ const boardKey=JSON.stringify([polygon,s.trial?.ai,s.units.map(u=>u.trialAwake?1:0),rangeKey,view.dest,!!view.menu,!!view.target,!!view.sortie,selected?.charges,selected?.spend,selected?.focus,s.units.map(u=>u.hp),s.warnings,s.map.goal,s.map.base,s.map.camp,s.map.south,s.southTaken]);
  if(cache.boardKey!==boardKey){
   if(!cache.board||cache.board.width!==cache.terrain.width||cache.board.height!==cache.terrain.height)cache.board=surface(s);
-  const c=cache.board.getContext('2d');c.clearRect(0,0,cache.board.width,cache.board.height);c.drawImage(cache.terrain,0,0);
-  paintTactics(c,s,view,selected,cache);cache.boardKey=boardKey;cache.boardBuilds++;
+  const c=cache.board.getContext('2d');c.clearRect(0,0,cache.board.width,cache.board.height);if(!polygon)c.drawImage(cache.terrain,0,0);
+  paintTactics(c,s,view,selected,cache,polygon);cache.boardKey=boardKey;cache.boardBuilds++;
  }
  return cache;
 }
@@ -61,7 +62,7 @@ function paintTerrain(c,s){
   if(t==='v'){c.fillStyle='#e0c58f';c.fillRect(px+7,py+14,19,13);c.fillStyle='#8f614d';c.beginPath();c.moveTo(px+4,py+14);c.lineTo(px+16,py+4);c.lineTo(px+29,py+14);c.fill();c.fillStyle='#524e45';c.fillRect(px+15,py+21,4,6);}
  }
 }
-function paintTactics(c,s,view,selected,{moves,attacks,danger}){
+function paintTactics(c,s,view,selected,{moves,attacks,danger},polygon=false){
  const showAttackHalo=!!view.target;
  for(let y=0;y<s.map.h;y++)for(let x=0;x<s.map.w;x++){
   const t=s.map.tiles[y][x],px=x*32,py=y*32;
@@ -105,7 +106,7 @@ function paintTactics(c,s,view,selected,{moves,attacks,danger}){
   for(let dy=-LURE_WAKE;dy<=LURE_WAKE;dy++){const dx=LURE_WAKE-Math.abs(dy);for(const x of new Set([home.x-dx,home.x+dx])){const y=home.y+dy;if(x>=0&&y>=0&&x<s.map.w&&y<s.map.h){c.fillRect(x*32+14,y*32+14,4,4);}}}
  }
  for(const w of s.warnings)for(const p of w.cells){c.strokeStyle=w.kind==='cannon'?'#ffdfb0':'#e0b9f2';c.lineWidth=2;c.strokeRect(p.x*32+2,p.y*32+2,28,28);c.fillStyle=w.kind==='cannon'?'#b34545bb':'#79568ebb';c.fillRect(p.x*32+3,p.y*32+3,26,8);c.fillStyle='#fff2cd';c.font='bold 7px sans-serif';c.textAlign='center';c.fillText(w.kind==='cannon'?`P4 −${RULES.barrageDamage}`:`増援T${w.turn}`,p.x*32+16,p.y*32+10);}
- if(s.map.camp&&s.map.tiles[s.map.camp.y]?.[s.map.camp.x]!=='c'){const x=s.map.camp.x*32,y=s.map.camp.y*32;if(view.sampleTheme==='industrial')paintIndustrialCamp(c,x,y);else if(view.sampleTheme==='fantasy')paintFantasyCamp(c,x,y);else castle(c,x,y);}
+ if(!polygon&&s.map.camp&&s.map.tiles[s.map.camp.y]?.[s.map.camp.x]!=='c'){const x=s.map.camp.x*32,y=s.map.camp.y*32;if(view.sampleTheme==='industrial')paintIndustrialCamp(c,x,y);else if(view.sampleTheme==='fantasy')paintFantasyCamp(c,x,y);else castle(c,x,y);}
   for(const [p,color,label]of [[s.map.goal,'#c66557','北城'],[s.map.camp,'#6dc6db','出撃'],[s.map.south,s.southTaken?'#75b9c0':'#c66557','南城']])if(p){c.fillStyle=color;c.fillRect(p.x*32+27,p.y*32+2,3,19);c.fillRect(p.x*32+19,p.y*32+2,10,7);c.fillStyle='#fff8d4';c.font='7px sans-serif';c.textAlign='center';c.fillText(label,p.x*32+16,p.y*32+31);}
  const weather=weatherAt(s);
  if(weather!=='clear'){
@@ -118,8 +119,11 @@ export function render(canvas,s,view){
  if(canvas.width!==width)canvas.width=width;if(canvas.height!==height)canvas.height=height;
  canvas.style.width=`${s.map.w*tile}px`;canvas.style.height=`${s.map.h*tile}px`;
  const c=canvas.getContext('2d');c.setTransform(ratio*tile/32,0,0,ratio*tile/32,0,0);c.imageSmoothingEnabled=false;
- c.drawImage(layers(canvas,s,view).board,0,0);
- const selected=s.units.find(u=>u.id===view.selected),drawStyled=(c,u)=>drawUnit(c,u,view.sampleTheme,view.lowHp);
+ const polygon=polygonFrame(canvas,s,view);
+ if(polygon){c.imageSmoothingEnabled=true;c.drawImage(polygon.terrain,0,0,s.map.w*32,s.map.h*32);}
+ c.drawImage(layers(canvas,s,view,!!polygon).board,0,0);
+ if(polygon)c.drawImage(polygon.units,0,0,s.map.w*32,s.map.h*32);
+ const selected=s.units.find(u=>u.id===view.selected),drawStyled=(c,u)=>drawUnit(c,u,view.sampleTheme,view.lowHp,!!polygon);
  if(view.route?.length>1)drawRoute(c,view.route);
  for(const u of alive(s)){
   const motion=view.motion?.id===u.id?view.motion:null;
@@ -347,10 +351,10 @@ function drawRoute(c,path){
 }
 function castle(c,x,y){c.fillStyle='#52645f';c.fillRect(x+3,y+10,26,19);c.fillStyle='#c6c6a5';c.fillRect(x+6,y+8,20,17);for(const xx of [4,13,23]){c.fillRect(x+xx,y+3,5,11);c.fillStyle='#e0d5af';c.fillRect(x+xx,y+3,5,3);c.fillStyle='#c6c6a5';}c.fillStyle='#354b4b';c.fillRect(x+13,y+16,7,10);}
 // One original, equipment-led silhouette per unit. No external sprite assets.
-function drawUnit(c,u,theme=null,lowHp=null){const x=u.x*32,y=u.y*32,blue=u.team==='ally',spent=blue&&u.acted;
+function drawUnit(c,u,theme=null,lowHp=null,polygon=false){const x=u.x*32,y=u.y*32,blue=u.team==='ally',spent=blue&&u.acted;
  const ink=spent?'#46504e':'#21323d',col=spent?'#7c8581':blue?'#376ec0':'#bb4352',light=spent?'#b4b8a6':blue?'#9ed6f1':'#ffb09b',skin=spent?'#b6b9a2':'#efd6a4';
  const rect=(dx,dy,w,h,color)=>{c.fillStyle=color;c.fillRect(x+dx,y+dy,w,h);};
- rect(7,26,21,3,'#19363866');
+ if(!polygon){rect(7,26,21,3,'#19363866');
  // Equipment and body shape both encode class; palette only encodes allegiance.
  const metal=spent?'#c0c2b1':'#e0e8d8',wood=spent?'#99988a':'#a57648';
  if(!paintThemedUnit(c,u,theme)){
@@ -382,6 +386,7 @@ function drawUnit(c,u,theme=null,lowHp=null){const x=u.x*32,y=u.y*32,blue=u.team
    c.strokeStyle=ink;c.lineWidth=5;c.beginPath();c.moveTo(x+24,y+6);c.quadraticCurveTo(x+35,y+16,x+24,y+27);c.stroke();c.strokeStyle='#f0d19a';c.lineWidth=2;c.stroke();
    c.strokeStyle='#f7edc8';c.lineWidth=1;c.beginPath();c.moveTo(x+24,y+6);c.lineTo(x+24,y+27);c.stroke();rect(20,16,9,2,skin);
   }else{rect(25,3,3,18,ink);rect(25,4,2,16,metal);rect(22,20,8,2,'#edc577');rect(25,22,2,5,wood);rect(10,3,4,7,metal);}
+ }
  }
  }
  // Persistent high-contrast class badge remains readable for spent units.

@@ -1,6 +1,7 @@
 import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107';
 import {unit} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
-import {render} from './render.js?v=trial90-lab-mixed107';
+import {render} from './render.js?v=trial90-lab-mixed107-polygon109';
+import {releasePolygon} from './polygon-renderer.js?v=polygon109';
 import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-mixed107';
 
 export const LAB_CASES=Object.freeze([
@@ -36,9 +37,9 @@ export function openTacticalLab({modal,button,sound,isFast,isReduced,theme=null}
  let current=createLabScenario('normal').initial;
  const view={tile:32,sampleTheme:theme};
  const visible=()=>canvas.isConnected&&dialog.open;
- const draw=()=>{if(visible())render(canvas,current,view);};
+ const draw=()=>{if(visible()){view.polygonReduced=isReduced();render(canvas,current,view);}};
  // Leaving the modal invalidates this replay's sound and callbacks immediately.
- dialog.addEventListener('close',()=>{generation++;},{once:true});
+ dialog.addEventListener('close',()=>{generation++;releasePolygon(canvas);},{once:true});
  draw();
  async function run(spec){
   if(busy||!visible())return;busy=true;const token=++generation;
