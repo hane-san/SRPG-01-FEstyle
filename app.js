@@ -57,7 +57,7 @@ const sound=createAudio(),music=createMusic();
 let themeMusic=sampleMode&&new URLSearchParams(location.search).get('music')!=='fixed';
 function applyThemeMusic(){music.setThemeOverride(themeMusic&&Object.hasOwn(STYLE_THEME,previewStyle)?THEME_SCORE_START+STYLE_THEME[previewStyle]:null);}
 applyThemeMusic();
-let battleCard=null,lastNotice=null,pendingUndo=null;
+let battleCard=null,lastNotice=null,pendingUndo=null,debugFrames=null;
 let thumb='right';try{thumb=thumbSide(localStorage.getItem('field-command-thumb-side'));}catch{}
 function applyThumb(){
  $('app').dataset.thumb=thumb;
@@ -97,6 +97,7 @@ function recenter(p,warningVisit=false){if(!warningVisit)warningReturn=null;cons
 function fit(){lastSize={w:vp.clientWidth,h:vp.clientHeight};view.tile=Math.max(20,Math.floor(vp.clientWidth/s.map.w))*[1,1.4,1.9][zoom];$('zoomLabel').textContent=['全幅','×1.4','×1.9'][zoom];}
 function drawMini(){let camera=vp;if(using3D()&&renderer3D.projection){const a=renderer3D.projection.intersect(vp.scrollLeft,vp.scrollTop,0),b=renderer3D.projection.intersect(vp.scrollLeft+vp.clientWidth,vp.scrollTop+vp.clientHeight,0);camera={scrollLeft:a.x*view.tile,scrollTop:a.y*view.tile,clientWidth:(b.x-a.x)*view.tile,clientHeight:(b.y-a.y)*view.tile};}mini($('minimap'),s,camera,view.tile,view.sampleTheme);}
 function draw(){
+ if(debugFrames&&view.animation&&debugFrames.length<512)debugFrames.push({stage:view.animation.stage,jewel:view.jewel?{id:view.jewel.id,index:view.jewel.index,hp:view.jewel.hp,zoom:view.jewel.zoom,hitStop:view.jewel.hitStop}:null,effect:view.effect?{crystal:view.effect.crystal,text:view.effect.text}:null});
  vp.dataset.renderer=using3D()?'webgl':'2d';
  if(using3D()){try{renderer3D.draw(s,view,{fast,reduced:reduced()});}catch(error){fallback3D(error.message);return;}}
  else{renderer3D.suspend();render(canvas,s,view);}drawMini();
@@ -439,7 +440,7 @@ vp.addEventListener('keydown',ev=>{
  if(delta){ev.preventDefault();view.keyboard=true;const origin=view.cursor||view.dest||E.alive(s,'ally')[0]||s.map.camp,p={x:Math.max(0,Math.min(s.map.w-1,origin.x+delta[0])),y:Math.max(0,Math.min(s.map.h-1,origin.y+delta[1]))};view.cursor=p;
   if(u?.team==='ally'&&!u.acted){draftMove(u,p);view.menu=false;}refresh();recenter({x:p.x+.5,y:p.y+.5});draw();return;
  }
- if(k==='enter'||k===' '){ev.preventDefault();if(u&&view.menu){$('attackOrder').disabled?$('waitOrder').focus():$('attackOrder').focus();return;}
+ if(k==='enter'||k===' '){ev.preventDefault();if(u&&view.menu){const attack=$('attackOrder');(!attack||attack.disabled)?$('waitOrder')?.focus():attack.focus();return;}
   const p=view.cursor||view.dest||E.alive(s,'ally')[0]||s.map.camp;if(!p)return;const target=E.at(s,p);
   if(u?.team==='ally'&&!u.acted&&(!target||target.id===u.id)){openDraft();}
   else{const q=cellClient(p);mapTap(q.x,q.y);}
@@ -670,7 +671,7 @@ $('logBtn').onclick=()=>{if(locked)return;modal(`<h2>戦闘記録</h2><p>T${s.tu
 window.addEventListener('resize',()=>{const p=using3D()&&renderer3D.projection?renderer3D.projection.intersect(vp.scrollLeft+lastSize.w/2,vp.scrollTop+lastSize.h/2,0):{x:(vp.scrollLeft+lastSize.w/2)/view.tile,y:(vp.scrollTop+lastSize.h/2)/view.tile};refresh();recenter(p);});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)draw();});
 // Explicit test controls are available only with ?debug=1; normal play has none.
-if(new URLSearchParams(location.search).has('debug'))window.srpgDebug={cellToScreen:cellClient,screenToCell:p=>mapPoint(p.x,p.y),center:()=>({x:center().x,y:center().y}),renderer:()=>({mode:using3D()?'webgl':'2d',...renderer3D.stats()}),setRenderer:setTrialRenderer,loadTrial:state=>{if(!sampleMode||locked||view.dragging)return false;s=decoratePreview(structuredClone(state));turnCheckpoint=structuredClone(s);resetSelection();refresh();home();return true;},snapshot:()=>structuredClone(s),draft:()=>structuredClone(view),audio:()=>sound.snapshot(),music:()=>music.snapshot(),busy:()=>locked,select:id=>{const u=s.units.find(u=>u.id===id);if(u)selectUnit(u);},start:(id,opts={})=>{settings={...settings,...opts};start(id);}};
+if(new URLSearchParams(location.search).has('debug'))window.srpgDebug={beginTrace:()=>{debugFrames=[];},endTrace:()=>{const frames=debugFrames;debugFrames=null;return frames;},cellToScreen:cellClient,screenToCell:p=>mapPoint(p.x,p.y),center:()=>({x:center().x,y:center().y}),renderer:()=>({mode:using3D()?'webgl':'2d',...renderer3D.stats()}),setRenderer:setTrialRenderer,loadTrial:state=>{if(!sampleMode||locked||view.dragging)return false;s=decoratePreview(structuredClone(state));turnCheckpoint=structuredClone(s);resetSelection();refresh();home();return true;},snapshot:()=>structuredClone(s),draft:()=>structuredClone(view),audio:()=>sound.snapshot(),music:()=>music.snapshot(),busy:()=>locked,select:id=>{const u=s.units.find(u=>u.id===id);if(u)selectUnit(u);},start:(id,opts={})=>{settings={...settings,...opts};start(id);}};
 // Layout is already measured by refresh; finish initial centering before accepting input.
 refresh();home();
 if(!stored&&!sampleMode)showMenu();

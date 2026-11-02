@@ -1,5 +1,5 @@
 // Small indexed-in-code procedural models; GPU buffers contain only triangles.
-export const LIMITS=Object.freeze({staticVertices:240000,dynamicVertices:120000,dpr:1.5,maxSide:4096});
+export const LIMITS=Object.freeze({staticVertices:240000,dynamicVertices:120000,dpr:1.5,maxSide:4096,maxPixels:2*1024*1024});
 export const rgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255);
 export function mesh(limit=LIMITS.staticVertices){
  const data=[];

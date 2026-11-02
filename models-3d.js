@@ -1,5 +1,5 @@
 import {mesh,LIMITS,rgb} from './mesh-3d.js?v=webgl102';
-import {surfaceHeight} from './projection-3d.js?v=webgl102';
+import {surfaceHeight,unitScale} from './projection-3d.js?v=webgl102';
 const steel=rgb('#586575'),brass=rgb('#c19a55'),stone=rgb('#85847c'),dark=rgb('#26313e'),wood=rgb('#634a35'),skin=rgb('#dbb99a');
 // Different silhouettes and construction, rather than two palettes on one mesh.
 export function terrainMesh(map,theme,units=[]){
@@ -108,13 +108,13 @@ export function unitsMesh(state,view,options={}){
  const chosen=state.units.find(u=>u.id===view.selected);
  if(chosen?.alive&&view.dest&&(view.dest.x!==chosen.x||view.dest.y!==chosen.y))units.push({...chosen,...view.dest,id:'draft'});
  for(const u of units){
-  const p=unitPose(u,view,{...options,target:state.units.find(t=>t.id===view.animation?.target)}),base=surfaceHeight(state.map,u),co=Math.cos(p.angle),si=Math.sin(p.angle),fall=1-p.collapse*.75;
+  const p=unitPose(u,view,{...options,target:state.units.find(t=>t.id===view.animation?.target)}),base=surfaceHeight(state.map,u),co=Math.cos(p.angle),si=Math.sin(p.angle),fall=1-p.collapse*.75,scale=unitScale(u.type,view.tile||32);
   const tint=u.acted?rgb('#7c8183'):u.team==='ally'?rgb(industrial?'#467d9e':'#386d94'):rgb(industrial?'#a65e49':'#a64550');
   const metal=industrial?steel:rgb('#b0b6b7'),trim=industrial?brass:rgb('#bbae83');
-  const point=(x,y,z)=>[p.x+.5+x*co+z*si,base+y*fall+p.breath,p.z+.5-x*si+z*co];
-  const box=(x,y,z,w,h,d,c,angle=0)=>{const a=point(x,y,z);m.box(...a,w,h*fall,d,c,p.angle+angle);};
-  const bone=(a,b,r,c,sides=7)=>m.tube(point(...a),point(...b),r,c,sides);
-  const orb=(x,y,z,rx,ry,rz,c,n=0)=>m.rock(...point(x,y,z),rx,ry*fall,rz,c,n);
+  const point=(x,y,z)=>[p.x+.5+(x*co+z*si)*scale,base+(y*fall+p.breath)*scale,p.z+.5+(-x*si+z*co)*scale];
+  const box=(x,y,z,w,h,d,c,angle=0)=>{const a=point(x,y,z);m.box(...a,w*scale,h*fall*scale,d*scale,c,p.angle+angle);};
+  const bone=(a,b,r,c,sides=7)=>m.tube(point(...a),point(...b),r*scale,c,sides);
+  const orb=(x,y,z,rx,ry,rz,c,n=0)=>m.rock(...point(x,y,z),rx*scale,ry*fall*scale,rz*scale,c,n);
   // Grounded, flattened footprint; depth-tested along with the model.
   orb(0,.015,0,.3,.012,.25,dark);
   let seat=0;
@@ -154,7 +154,7 @@ export function unitsMesh(state,view,options={}){
   orb(0,1.02+seat,-p.hit,.12,.21,.13,u.type==='bandit'?dark:skin,2);
   if(u.type==='shield'){box(0,1.09+seat,0,.28,.12,.27,metal);box(0,1.19+seat,-.01,.04,.1,.18,trim);}
   else if(industrial){box(0,1.14+seat,0,.27,.07,.28,dark);for(const x of [-.055,.055])orb(x,1.11+seat,.12,.035,.035,.03,brass);}
-  else if(u.type==='mage')m.tube(point(0,1.08,0),point(0,1.4,0),.17,tint,7,.01);
+  else if(u.type==='mage')m.tube(point(0,1.08,0),point(0,1.4,0),.17*scale,tint,7,.01*scale);
   else if(u.type==='bandit')box(0,1.09,.02,.27,.07,.29,rgb('#876e49'));
   const reach=p.attack*.32,armY=bodyTop-.15;
   for(const side of [-1,1]){
@@ -178,7 +178,7 @@ export function unitsMesh(state,view,options={}){
    bone([-.22,.8,0],[-.24,.9+p.attack*.23,.2+reach],.045,tint);
   }else{
    const spear=u.type==='spear'||u.type==='horse';
-   bone([.27,.58+seat,.1],[.27,.95+seat+reach,(spear?1.03:.5)+reach],spear?.025:.045,industrial?brass:metal,4);
+   bone([.27,.58+seat,.1],[.27,.95+seat+reach,(u.type==='horse'?.65:spear?1.03:.5)+reach],spear?.025:.045,industrial?brass:metal,4);
    if(u.type==='bandit')bone([.27,.9,.42],[.42,.99,.56],.04,metal,4);
   }
   if(u.rank==='upper')orb(0,bodyTop+.04,-.01,.25,.07,.19,trim);

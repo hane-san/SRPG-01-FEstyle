@@ -1,6 +1,12 @@
 // Presentation coordinates only. No movement, terrain costs or combat calculations.
 export const TILT=Math.PI/6;
 const C=Math.cos(TILT),S=Math.sin(TILT);
+// CSS-size guide, shared by models, labels and silhouette picking. Not a rule stat.
+export function unitScale(type,tile){
+ const silhouette={shield:.91,bow:.98,mage:1.09,sword:1.1,shooter:.93,bandit:.87,spear:1.4,horse:1.6}[type]||1.1;
+ return Math.min(1.25,Math.max(.25,(type==='horse'?35:30)/(tile*silhouette)));
+}
+export const headHeight=(type,tile)=>(type==='horse'?1.9:1.45)*unitScale(type,tile);
 export function surfaceHeight(map,p){
  const t=map.tiles[Math.floor(p.y)]?.[Math.floor(p.x)];
  return t==='+'?.18:t==='~'?-.14:0;
@@ -31,7 +37,7 @@ export function createProjection(map,tile){
  function screenToCell(x,y,units=[]){
   // A narrow silhouette target, not overlapping 44px rectangles on every tile.
   const bodies=units.filter(u=>u.alive&&u.deployed!==false).map(u=>{
-   const foot=cellToScreen(u),head=cellToScreen(u,surfaceHeight(map,u)+1.45);
+   const foot=cellToScreen(u),head=cellToScreen(u,surfaceHeight(map,u)+headHeight(u.type,tile));
    return {u,foot,head,d:Math.hypot(x-head.x,y-(head.y+foot.y)/2)};
   }).filter(({foot,head})=>Math.abs(x-foot.x)<tile*.34&&y>=head.y-13&&y<=foot.y+3).sort((a,b)=>a.d-b.d||a.foot.depth-b.foot.depth);
   if(bodies.length)return {x:bodies[0].u.x,y:bodies[0].u.y};

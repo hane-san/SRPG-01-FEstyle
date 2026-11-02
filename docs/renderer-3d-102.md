@@ -29,7 +29,7 @@
 ## GPU・CPUの上限と解放
 
 - WebGL1、外部ライブラリ/素材/CDNなし。頂点色+法線による面の照明、正投影、深度テスト。影は足元の手続きメッシュで、shadow mapは作らない。
-- 同時に1 context、1 program、2 vertex buffer（静的地形/動的駒）、texture/FBO/renderbufferは0。上限は静的240,000頂点、動的120,000頂点、合計120,000三角形。各頂点は位置/法線/色の9 float、GPU頂点メモリ上限12.96MB。canvas DPRは最大1.5、背面寸法は最大4096px/辺。
+- 同時に1 context、1 program、2 vertex buffer（静的地形/動的駒）、アプリ所有texture/FBO/renderbufferは0。上限は静的240,000頂点、動的120,000頂点、合計120,000三角形。各頂点は位置/法線/色の9 float、GPU頂点メモリ上限12.96MB。canvas DPRは最大1.5、背面寸法は最大4096px/辺、背面画素は最大2,097,152。MSAAなし。既定色+深度を8bytes/画素で見積もると約16.8MBで、ブラウザ/ドライバ自身の複製・compositorメモリは別であり全GPUメモリの保証値ではない。
 - 地形メッシュはmap/style/選択近傍の遮蔽キーが変わった時のみ再構築。駒メッシュは同じ動的bufferへ上書き。毎フレームbuffer/programを新規作成しない。2D切替でbuffer/programをdeleteし、canvas/contextは1個を再利用する。context lossで旧ハンドルを破棄し復帰時に二重deleteしない。
 - 静的/動的の最大2 draw callsを基本とし、Canvas2D overlayは別に数える。上限を超えた場合は切り捨てず理由を表示して2Dへ戻す。初期描画・CPUフレーム時間・頂点/三角形・draw calls・資源数をdebug計測口へ記録する。GPU完了時間や実機60fps保証とは扱わない。
 

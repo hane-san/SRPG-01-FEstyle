@@ -1,4 +1,4 @@
-import {createProjection,surfaceHeight} from './projection-3d.js?v=webgl102';
+import {createProjection,surfaceHeight,headHeight} from './projection-3d.js?v=webgl102';
 import {LIMITS} from './mesh-3d.js?v=webgl102';
 import {terrainMesh,unitsMesh} from './models-3d.js?v=webgl102';
 import {drawGemCloseUp,drawDamageNumber,drawGemFragments} from './render.js?v=webgl102';
@@ -31,7 +31,7 @@ export class TrialRenderer3D{
     Object.assign(this.metrics,{programs:0,buffers:0,gpuBytes:0});this.onFallback('WebGLの接続が失われたため2Dへ戻りました');
    });
    this.canvas.addEventListener('webglcontextrestored',()=>{this.lost=false;this.staticKey=null;});
-   this.gl=this.canvas.getContext('webgl',{alpha:false,antialias:true,depth:true,preserveDrawingBuffer:false});
+   this.gl=this.canvas.getContext('webgl',{alpha:false,antialias:false,depth:true,preserveDrawingBuffer:false});
    if(!this.gl)throw Error('この環境ではWebGLを使用できません');
    this.metrics.contexts=1;
   }
@@ -68,15 +68,16 @@ export class TrialRenderer3D{
  draw(state,view,options={}){
   const begin=performance.now(),initial=!this.program;this.ensure();
   const gl=this.gl,projection=createProjection(state.map,view.tile);this.projection=projection;
-  const dpr=Math.min(devicePixelRatio||1,LIMITS.dpr,LIMITS.maxSide/projection.width,LIMITS.maxSide/projection.height);
+  const dpr=Math.min(devicePixelRatio||1,LIMITS.dpr,LIMITS.maxSide/projection.width,LIMITS.maxSide/projection.height,Math.sqrt(LIMITS.maxPixels/(projection.width*projection.height)));
   for(const canvas of [this.canvas,this.overlay]){
-   const w=Math.round(projection.width*dpr),h=Math.round(projection.height*dpr);
+   const w=Math.floor(projection.width*dpr),h=Math.floor(projection.height*dpr);
    if(canvas.width!==w)canvas.width=w;if(canvas.height!==h)canvas.height=h;
    canvas.style.width=projection.width+'px';canvas.style.height=projection.height+'px';
   }
   this.canvas.hidden=false;
-  const key=JSON.stringify([state.map.id,state.map.tiles,view.sampleTheme,state.units.map(u=>[u.x,u.y,u.alive,u.deployed])]);
-  if(key!==this.staticKey){this.staticData=terrainMesh(state.map,view.sampleTheme,state.units);this.staticKey=key;this.metrics.builds++;
+  const route=view.animation?.kind==='move'?view.animation.path:view.route||[];
+  const key=JSON.stringify([state.map.id,state.map.tiles,view.sampleTheme,state.units.map(u=>[u.x,u.y,u.alive,u.deployed]),route]);
+  if(key!==this.staticKey){this.staticData=terrainMesh(state.map,view.sampleTheme,[...state.units,...route.map(p=>({...p,alive:true}))]);this.staticKey=key;this.metrics.builds++;
    gl.bindBuffer(gl.ARRAY_BUFFER,this.buffers[0]);gl.bufferData(gl.ARRAY_BUFFER,this.staticData,gl.STATIC_DRAW);
   }
   const dynamic=unitsMesh(state,view,options);
@@ -89,10 +90,10 @@ export class TrialRenderer3D{
    gl.drawArrays(gl.TRIANGLES,0,(i===0?this.staticData:dynamic).length/9);
   }
   const error=gl.getError();if(error!==gl.NO_ERROR)throw Error('WebGL描画を継続できませんでした');
-  const c=this.overlay.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,projection.width,projection.height);c.imageSmoothingEnabled=true;
+  const c=this.overlay.getContext('2d');c.setTransform(this.overlay.width/projection.width,0,0,this.overlay.height/projection.height,0,0);c.clearRect(0,0,projection.width,projection.height);c.imageSmoothingEnabled=true;
   this.drawOverlay(c,state,view,projection);
   const elapsed=performance.now()-begin;
-  Object.assign(this.metrics,{drawCalls:2,triangles:(this.staticData.length+dynamic.length)/27,gpuBytes:(this.staticData.length+dynamic.length)*4});
+  Object.assign(this.metrics,{drawCalls:2,triangles:(this.staticData.length+dynamic.length)/27,gpuBytes:(this.staticData.length+dynamic.length)*4,framebufferPixels:this.canvas.width*this.canvas.height});
   this.metrics.frames++;this.metrics.frameMs.push(elapsed);if(this.metrics.frameMs.length>180)this.metrics.frameMs.shift();
   if(initial)this.metrics.initialMs=elapsed;
  }
@@ -123,7 +124,7 @@ export class TrialRenderer3D{
   if(target&&view.dest){const a=p.cellToScreen(view.dest),b=p.cellToScreen(target);c.save();c.setLineDash([4,3]);c.strokeStyle='#ffe2a0';c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();c.restore();}
   for(const u of alive(s)){
    const motion=view.motion?.id===u.id?view.motion:u;
-   const head=p.cellToScreen(motion,surfaceHeight(s.map,u)+(u.type==='horse'?1.75:1.45));head.x=Math.max(18,Math.min(p.width-18,head.x));
+   const head=p.cellToScreen(motion,surfaceHeight(s.map,u)+headHeight(u.type,p.tile));head.x=Math.max(18,Math.min(p.width-18,head.x));
    const jewel=view.jewel?.id===u.id?view.jewel:null,hp=jewel?.hp??u.hp;
    c.textAlign='center';c.font='bold 10px sans-serif';c.fillStyle='#12202aee';c.fillRect(head.x-17,head.y-13,34,24);
    c.fillStyle=u.team==='ally'?'#b8deff':'#ffb9ad';c.fillText(`${u.glyph}${u.acted?' ✓':''}`,head.x,head.y-3);
@@ -139,9 +140,9 @@ export class TrialRenderer3D{
   // Reuse the exact #101 painters, in CSS-screen coordinates above the 3D head.
   const screenState={map:{w:p.width/32}};
   if(view.jewel){const u=s.units.find(u=>u.id===view.jewel.id);if(u){
-   const q=p.cellToScreen(u,surfaceHeight(s.map,u)+1.5),fake={...u,x:(q.x-16)/32,y:q.y/32};
+   const q=p.cellToScreen(u,surfaceHeight(s.map,u)+headHeight(u.type,p.tile)),fake={...u,x:(q.x-16)/32,y:q.y/32};
    if(view.jewel.zoom)drawGemCloseUp(c,screenState,fake,view.jewel);else if(!view.jewel.hitStop)drawGemFragments(c,fake,view.jewel);
   }}
-  if(view.effect){const e=view.effect,q=p.cellToScreen(e,surfaceHeight(s.map,e)+1.5);drawDamageNumber(c,screenState,{...e,x:(q.x-16)/32,y:q.y/32});}
+  if(view.effect){const e=view.effect,u=s.units.find(u=>u.id===view.animation?.target),q=p.cellToScreen(e,surfaceHeight(s.map,e)+headHeight(u?.type,p.tile));drawDamageNumber(c,screenState,{...e,x:(q.x-16)/32,y:q.y/32});}
  }
 }

@@ -36,17 +36,12 @@ async function gesture(page,cdp,from,to,via=null){
 async function battle(page,cdp,id){
  const f=fixture(id);await page.evaluate(s=>window.srpgDebug.loadTrial(s),f.s);
  const initial=await page.evaluate(()=>window.srpgDebug.snapshot()),expected=structuredClone(initial);
- const seen=page.evaluate(()=>new Promise(resolve=>{
-  const stages=[],indices=[],start=performance.now();let busy=false;
-  const tick=()=>{const v=window.srpgDebug.draft();busy||=window.srpgDebug.busy();
-   if(v.jewel?.id==='e'&&!v.jewel.hitStop&&indices.at(-1)!==v.jewel.index)indices.push(v.jewel.index);
-   if(v.effect?.crystal&&!stages.includes('number'))stages.push('number');if(v.jewel?.zoom&&!stages.includes('gems'))stages.push('gems');
-   if(busy&&!window.srpgDebug.busy()||performance.now()-start>5000)resolve({stages,indices});else requestAnimationFrame(tick);
-  };tick();
- })).catch(error=>({stages:[],indices:[],samplingError:error.message}));
+ await page.evaluate(()=>window.srpgDebug.beginTrace());
  await gesture(page,cdp,f.origin,f.enemy,f.dest);
  assert.ok(E.act(expected,'a',f.dest,'attack','e').ok);
  assert.deepEqual(await page.evaluate(()=>window.srpgDebug.snapshot()),expected,'real flick uses the same route/damage/counter as the 2D engine');
+ const trace=await page.evaluate(()=>window.srpgDebug.endTrace());
+ const stages=[],indices=[];for(const f of trace){if(f.effect?.crystal&&!stages.includes('number'))stages.push('number');if(f.jewel?.zoom&&!stages.includes('gems'))stages.push('gems');if(f.jewel?.id==='e'&&!f.jewel.hitStop&&indices.at(-1)!==f.jewel.index)indices.push(f.jewel.index);}
  await page.locator('#rosterBtn').click();await page.locator('#rosterList button').filter({hasText:'治療役'}).click();
  await page.locator('#waitOrder').click();await page.waitForFunction(()=>!window.srpgDebug.busy());
  assert.ok(E.act(expected,'m',expected.units.find(u=>u.id==='m'),'wait').ok);
@@ -55,7 +50,7 @@ async function battle(page,cdp,id){
  E.endTurn(expected);
  const final=await page.evaluate(()=>window.srpgDebug.snapshot());assert.deepEqual(final,expected,'P2/P3 heal, supplies and turn match the shared engine');
  assert.equal(final.units.find(u=>u.id==='p').hp,6);
- const observed=await seen;assert.deepEqual(observed.indices,[5,4],'only the two HP actually lost shatter, in order');return {final,...observed};
+ assert.deepEqual(indices,[5,4],'only the two HP actually lost shatter, in order');return {final,stages,indices};
 }
 async function sortie(page,cdp,id){
  await page.evaluate(s=>window.srpgDebug.loadTrial(s),E.createGame(id));
@@ -93,6 +88,7 @@ try{
   assert.equal(await page.evaluate(()=>localStorage.getItem('field-command-save-v1')),'campaign sentinel');
   const stats=await page.evaluate(()=>window.srpgDebug.renderer());assert.equal(stats.programs,1);assert.equal(stats.buffers,2);assert.equal(stats.drawCalls,2);
   assert.ok(stats.triangles<=120000&&stats.gpuBytes<=12960000);
+  assert.ok(stats.framebufferPixels<=2097152,'bounded non-MSAA backing surface');
   if(width===390&&mode==='normal')await page.screenshot({path:`test-results/webgl-${id}-${theme}.png`});
   rows.push({width,height,id,theme,mode,...stats});console.log(JSON.stringify({webglCase:rows.length,width,id,theme,mode}));await context.close();
  }
@@ -107,6 +103,8 @@ try{
   const expected=await page.evaluate(()=>window.srpgDebug.snapshot());
   if(type==='shooter'){
    await page.locator('#rosterBtn').click();await page.locator('#rosterList button').first().click();
+   await page.locator('#mapViewport').focus();await page.keyboard.press('Enter');
+   assert.equal(await page.evaluate(()=>document.activeElement.id),'waitOrder','specialist keyboard choice focuses Wait without an Attack button');
    await page.locator('#waitOrder').click();await page.waitForFunction(()=>!window.srpgDebug.busy());
    assert.ok(E.act(expected,'a',actor,'wait').ok);
    await page.locator('#endTurn').click();await page.waitForFunction(()=>!window.srpgDebug.busy()&&window.srpgDebug.snapshot().turn===2);E.endTurn(expected);

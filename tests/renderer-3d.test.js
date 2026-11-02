@@ -43,3 +43,12 @@ test('poses use observer path segment and common animation progress; reduced mot
  assert.equal(pose.x,4.25);assert.equal(pose.angle,Math.PI/2);assert.notEqual(pose.walk,0);
  const quiet=unitPose(u,view,{reduced:true});assert.equal(quiet.walk,0);assert.equal(quiet.breath,0);assert.deepEqual(view,copy);
 });
+test('representative idle polygon silhouettes stay readable at tactical phone and landscape scales',()=>{
+ for(const tile of [26,31,44])for(const type of ['sword','shield','horse','bow','mage','shooter','bandit']){
+  const s=E.createGame();s.units=[unit({id:'a',name:type,type,x:5,y:15},type==='bandit'?'enemy':'ally')];
+  const data=unitsMesh(s,{tile,sampleTheme:'fantasy'},{reduced:true}),p=createProjection(s.map,tile),ys=[];
+  for(let i=0;i<data.length;i+=9)ys.push(p.project(data[i],data[i+1],data[i+2]).y);
+  const height=Math.max(...ys)-Math.min(...ys);
+  assert.ok(height>=24&&height<=39,`${type}/${tile}: ${height.toFixed(1)} CSS px`);
+ }
+});
