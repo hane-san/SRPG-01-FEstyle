@@ -1,12 +1,12 @@
 import {paintFantasyTerrain,paintFantasyCamp,FANTASY_COLORS,paintThemedUnit} from './fantasy-theme.js?v=trial90-art97';
-import {polygonFrame} from './polygon-renderer.js?v=polygon109';
-import {LURE_WAKE,mixedRole} from './trial-profiles.js?v=mixed107';
+import {polygonFrame} from './polygon-renderer.js?v=polygon109-figure111';
+import {LURE_WAKE,mixedRole} from './trial-profiles.js?v=mixed107-figure111';
 import {paintIndustrialTerrain,paintIndustrialCamp,INDUSTRIAL_COLORS} from './sample-theme.js?v=sample76-art97';
 import {weaponFrame,bossFracture,isBossUnit} from './weapon-fx.js?v=0.8.0-weapon48';
 import {impactFrame,landingFrame} from './combat-fx.js?v=0.8.0-fx39';
-import {tacticalRanges,attackTargets} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107';
+import {tacticalRanges,attackTargets} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107-figure111';
 import {RULES} from './config.js?v=0.8.0-p3-26-classes68';
-import {alive,reachable,inRange,key,terrain,supportRange,supportTargets,waitCommand,enemyMovement,weatherAt} from './engine.js?v=mixed107';
+import {alive,reachable,inRange,key,terrain,supportRange,supportTargets,waitCommand,enemyMovement,weatherAt} from './engine.js?v=mixed107-figure111';
 export const COLORS={'.':'#889968','=':'#baad7c',f:'#5c7957','~':'#688f9a','#':'#79827b','+':'#9c8157',c:'#8b9581',v:'#a69b71'};
 const PALETTES=[
  {'.':'#919e7b','=':'#beb792',f:'#627d68','~':'#769aab'},
@@ -122,7 +122,7 @@ export function render(canvas,s,view){
  const polygon=polygonFrame(canvas,s,view);
  if(polygon){c.imageSmoothingEnabled=true;c.drawImage(polygon.terrain,0,0,s.map.w*32,s.map.h*32);}
  c.drawImage(layers(canvas,s,view,!!polygon).board,0,0);
- if(polygon)c.drawImage(polygon.units,0,0,s.map.w*32,s.map.h*32);
+ if(polygon){const r=polygon.unitsRect;c.drawImage(polygon.units,r.x,r.y,r.w,r.h);}
  const selected=s.units.find(u=>u.id===view.selected),drawStyled=(c,u)=>drawUnit(c,u,view.sampleTheme,view.lowHp,!!polygon);
  if(view.route?.length>1)drawRoute(c,view.route);
  for(const u of alive(s)){
