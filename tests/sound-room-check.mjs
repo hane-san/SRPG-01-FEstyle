@@ -10,13 +10,14 @@ try{
   document.querySelectorAll('#modalBody details').forEach(d=>d.open=false);return h;});
  assert.ok(linkHeights.length>=2&&linkHeights.every(h=>h>=44),'menu links must be at least 44px tall: '+linkHeights);
  await page.locator('#soundRoomDetails summary').click();
- assert.equal(await page.locator('#soundRoomList button').count(),42);
- assert.equal(await page.locator('.sound-room-section').count(),3);
- assert.equal(await page.locator('.sound-room-mood').count(),15);
+ assert.equal(await page.locator('#soundRoomList button').count(),46,'No.01–42 plus the #104 world themes No.43–46');
+ assert.equal(await page.locator('.sound-room-section').count(),4);
+ assert.equal(await page.locator('.sound-room-mood').count(),17);
  assert((await page.locator('#soundRoomMapAssignments').innerText()).includes('No.01'));
  assert((await page.locator('#soundRoomList button').first().innerText()).includes('No.01'));
  assert((await page.locator('#soundRoomList button').nth(26).innerText()).includes('No.27'));
- assert((await page.locator('#soundRoomList button').last().innerText()).includes('No.42'));
+ assert((await page.locator('#soundRoomList button').nth(41).innerText()).includes('No.42'));
+ assert((await page.locator('#soundRoomList button').last().innerText()).includes('No.46'));
  const initial=await page.evaluate(()=>srpgDebug.music());
  assert.equal(initial.enabled,false);
  await page.locator('#soundRoomList button').nth(0).click();
@@ -64,9 +65,9 @@ try{
   }
   return rows;
  });
- assert.equal(waveChecks.length,30);
- assert.equal(new Set(waveChecks.map(x=>x.signature)).size,30);
+ assert.equal(waveChecks.length,34,"No.13–46 rendered, including the #104 world themes");
+ assert.equal(new Set(waveChecks.map(x=>x.signature)).size,34);
  assert(waveChecks.every(x=>x.peak>.005&&x.peak<.8&&x.rms>.001),JSON.stringify(waveChecks));
  assert.deepEqual(errors,[]);
- console.log('Sound room: 42 tracks, independent OFF audition, switching, stop, restore, Escape cleanup OK');
+ console.log('Sound room: 46 tracks, independent OFF audition, switching, stop, restore, Escape cleanup OK');
 }finally{await browser.close();}

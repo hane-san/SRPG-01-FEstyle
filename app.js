@@ -12,7 +12,8 @@ import {bindMapInput,createHoldLock,bindReserveInput} from './ui-input.js?v=tria
 import {readSave,writeSave} from './save.js?v=0.8.0-p3-26-save37-war43-classes68';
 import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import {createAudio} from './audio.js?v=0.8.0-issue17-sortie29-issue24-gems28-flick35-weapon48';
-import {createMusic,buildTrack,SCORES,BONUS_SCORES,MUSIC_LIBRARY,trackNumber,assignedTrackNumber,trackByNumber} from './music.js?v=0.8.0-library42';
+import {createMusic,buildTrack,SCORES,BONUS_SCORES,MUSIC_LIBRARY,trackNumber,assignedTrackNumber,trackByNumber,THEME_SCORE_START} from './music.js?v=0.8.0-library42-theme104';
+import {STYLE_THEME} from './music-theme.js?v=theme104';
 import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-ui96-trial92-crystal101';
 import {DISPLAY_NAME} from './display-name.js?v=0.8.0-display-2fb0ebb2368b';
 const $=id=>document.getElementById(id),canvas=$('battlefield'),vp=$('mapViewport');
@@ -47,6 +48,11 @@ let lastSize={w:0,h:0};
 let view={selected:null,dest:null,target:null,action:null,danger:false,tile:32,cursor:null,sampleTheme:sampleMode?previewStyle:null};
 let fast=false;try{fast=localStorage.getItem('field-command-fast')==='true';}catch{}
 const sound=createAudio(),music=createMusic();
+// Issue #104: on the trial screen the industrial and fantasy styles bring their own world
+// theme (No.43–46) unless the player fixes the map's usual music. Never turns BGM on.
+let themeMusic=sampleMode&&new URLSearchParams(location.search).get('music')!=='fixed';
+function applyThemeMusic(){music.setThemeOverride(themeMusic&&Object.hasOwn(STYLE_THEME,previewStyle)?THEME_SCORE_START+STYLE_THEME[previewStyle]:null);}
+applyThemeMusic();
 let battleCard=null,lastNotice=null,pendingUndo=null;
 let thumb='right';try{thumb=thumbSide(localStorage.getItem('field-command-thumb-side'));}catch{}
 function applyThumb(){
@@ -525,7 +531,7 @@ function addTrialControls(root,compare=false){
   const label=document.createElement('p');label.className='hint';label.textContent='同じ戦況・同じ位置で画風だけを切り替えます。';section.append(label);
   const row=document.createElement('div');row.className='trial-grid';row.id='styleChoices';
   for(const [id,label] of Object.entries(STYLES)){
-   const b=button(label,()=>{previewStyle=id;view.sampleTheme=id;const url=new URL(location.href);url.searchParams.set('style',id);history.replaceState(null,'',url);document.title=`${sampleScene.title} — ${label}試遊`;close();draw();},'subtle');
+   const b=button(label,()=>{previewStyle=id;view.sampleTheme=id;applyThemeMusic();const url=new URL(location.href);url.searchParams.set('style',id);history.replaceState(null,'',url);document.title=`${sampleScene.title} — ${label}試遊`;close();draw();},'subtle');
    b.dataset.style=id;b.setAttribute('aria-pressed',String(previewStyle===id));row.append(b);
   }
   section.append(row);
@@ -557,7 +563,10 @@ function addComparisonControls(root){
  const hit=document.createElement('div');hit.className='trial-grid';hit.id='hitChoices';
  for(const [id,p] of Object.entries(HIT_PROFILES)){const b=button('打撃感：'+p.label,()=>{trialHit=id;setTrialParam('hit',id);showMenu();},'subtle');b.dataset.hit=id;b.setAttribute('aria-pressed',String(trialHit===id));hit.append(b);}
  const note=document.createElement('p');note.className='hint';note.textContent=AI_PROFILES[trialAI].note;
- section.append(ai,note,hit,button(`同じ状態からやり直す（T${turnCheckpoint?.turn??s.turn}開始時）`,()=>restartFromCheckpoint(trialAI),'wide subtle'));
+ const theme=button(themeMusic?'テーマ曲：画風に連動（工業幻想・古典ファンタジー）':'テーマ曲：固定（マップの曲）',()=>{
+  themeMusic=!themeMusic;const url=new URL(location.href);if(themeMusic)url.searchParams.delete('music');else url.searchParams.set('music','fixed');history.replaceState(null,'',url);applyThemeMusic();showMenu();
+ },'wide subtle');theme.id='themeMusicToggle';theme.setAttribute('aria-pressed',String(themeMusic));
+ section.append(ai,note,hit,theme,button(`同じ状態からやり直す（T${turnCheckpoint?.turn??s.turn}開始時）`,()=>restartFromCheckpoint(trialAI),'wide subtle'));
  root.append(section);
 }
 function showMenu(){if(locked)return;
@@ -601,9 +610,9 @@ function showMenu(){if(locked)return;
   $('soundRoomStop').disabled=!active;
  }
  for(const [mapId,score] of MUSIC_LIBRARY.entries()){
-  if(mapId===0||mapId===SCORES.length||mapId===SCORES.length+BONUS_SCORES.length){
+  if(mapId===0||mapId===SCORES.length||mapId===SCORES.length+BONUS_SCORES.length||mapId===THEME_SCORE_START){
    const section=document.createElement('h3');section.className='sound-room-section';
-   section.textContent=mapId===0?'現行マップ曲｜No.01–12':mapId===SCORES.length?'既存の追加候補｜No.13–26':'新曲・哀愁と勇壮｜No.27–42';
+   section.textContent=mapId===0?'現行マップ曲｜No.01–12':mapId===SCORES.length?'既存の追加候補｜No.13–26':mapId===THEME_SCORE_START?'世界観テーマ（試遊の画風と連動）｜No.43–46':'新曲・哀愁と勇壮｜No.27–42';
    $('soundRoomList').append(section);
   }
   const card=document.createElement('div');card.className='sound-room-card';

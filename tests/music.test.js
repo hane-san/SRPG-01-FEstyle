@@ -83,7 +83,7 @@ test('phase changes fade out, leave silence and start at normal bus volume; prev
 test('seven contrasting sound-room-only themes provide fourteen complete original companion tracks',()=>{
  assert.equal(SCORES.length,6);
  assert.equal(BONUS_SCORES.length,7);
- assert.equal(MUSIC_LIBRARY.length,21);
+ assert.equal(MUSIC_LIBRARY.length,23,'21 scores (No.01–42) plus the two #104 world themes (No.43–46)');
  assert.deepEqual(MUSIC_LIBRARY.slice(0,6),SCORES);
  const titles=new Set(),notes=new Set(),moods=new Set(),tempos=new Set();
  for(let map=6;map<SCORES.length+BONUS_SCORES.length;map++){
@@ -110,23 +110,23 @@ test('seven contrasting sound-room-only themes provide fourteen complete origina
  music.setScene(0,1);assert.equal(music.enabled,false);
  assert(music.playPreview(12,2));assert.equal(music.snapshot().preview,'12:hostile');
  music.stopPreview();assert.equal(music.snapshot().preview,null);
- assert.equal(music.playPreview(21,1),false);
+ assert.equal(music.playPreview(MUSIC_LIBRARY.length,1),false,'previews past the last score are refused');
  music.destroy();
 });
 
 test('No.01–26 stay fixed and sixteen distinct sorrowful-heroic tracks extend to No.42',()=>{
  assert.equal(NEW_SCORES.length,8);
- assert.equal(MUSIC_LIBRARY.length,21);
+ assert.equal(MUSIC_LIBRARY.length,23,'21 scores (No.01–42) plus the two #104 world themes (No.43–46)');
  assert.deepEqual(MUSIC_LIBRARY.slice(0,6),SCORES);
  assert.deepEqual(MUSIC_LIBRARY.slice(6,13),BONUS_SCORES);
- assert.deepEqual(MUSIC_LIBRARY.slice(13),NEW_SCORES);
+ assert.deepEqual(MUSIC_LIBRARY.slice(13,21),NEW_SCORES);
  assert.equal(MUSIC_LIBRARY[0].ally.title,'川霧を越えて');
  assert.equal(trackByNumber(1).title,'川霧を越えて');
  assert.equal(trackByNumber(26).title,'包囲網の圧迫');
  assert.equal(trackByNumber(27).title,'沈む陽を背に進め');
  assert.equal(trackByNumber(42).title,'運命を断つ槍');
  assert.equal(trackByNumber(0),null);
- assert.equal(trackByNumber(43),null);
+ assert.equal(trackByNumber(MUSIC_LIBRARY.length*2+1),null,'numbers past the catalogue are refused');
  assert.equal(trackByNumber(1.5),null);
  const titles=new Set(),signatures=new Set();
  for(let n=1;n<=42;n++){
@@ -158,4 +158,19 @@ test('map music assignments retain current tracks and can resolve any numbered c
  const first=trackByNumber(37),last=trackByNumber(42);
  assert.equal(first.side,'ally');assert.equal(last.side,'hostile');
  assert.notEqual(first.title,last.title);
+});
+
+// Issue #104: two world themes follow No.42 without renumbering or touching No.01–42.
+import {THEME_SCORES,STYLE_THEME} from '../music-theme.js';
+test('the two world themes add No.43–46 after the existing catalogue',()=>{
+ assert.equal(THEME_SCORES.length,2);
+ assert.deepEqual(MUSIC_LIBRARY.slice(21),THEME_SCORES);
+ const titles=[43,44,45,46].map(n=>trackByNumber(n).title);
+ assert.deepEqual(titles,['煤けた歯車の行進','蒸気圧の限界','角笛の丘を越えて','旗なき野の決意']);
+ assert.equal(trackByNumber(47),null);
+ for(const n of [43,44,45,46]){const t=trackByNumber(n);assert.ok(t.seconds>=55&&t.seconds<=95,`No.${n} loops over about a minute: ${t.seconds}`);}
+ // The industrial theme uses its own metallic voice; no earlier track does.
+ assert.ok(trackByNumber(43).events.some(e=>e.voice==='gear'));
+ for(let n=1;n<=42;n++)assert.ok(!trackByNumber(n).events.some(e=>e.voice==='gear'),`No.${n} unchanged`);
+ assert.deepEqual(STYLE_THEME,{industrial:0,fantasy:1});
 });
