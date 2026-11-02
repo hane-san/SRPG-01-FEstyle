@@ -133,7 +133,13 @@ export function unitMesh(mesh,u,theme,pose){
   }
   mesh.bevel(0,.68,-.04,.32,.08,.26,leather);mesh.bevel(0,.76,-.1,.25,.12,.18,coat);
   mesh.beam([-.11,.84,.03],[-.1,.76,.52],.012,p.brass);mesh.beam([.11,.84,.03],[.1,.76,.52],.012,p.brass);
-  mesh.beam([0,.57,-.42],[0,.3,-.55],.045,p.dark);torso=1.04;
+  mesh.beam([0,.57,-.42],[0,.3,-.55],.045,p.dark);torso=.96;
+  // Rider's thighs/boots straddle the saddle; the torso must not float above it.
+  for(const side of [-1,1]){
+   mesh.bevel(side*.245,.62,-.08,.12,.31,.14,leather,.02);
+   mesh.bevel(side*.26,.43,-.015,.14,.13,.22,p.dark,.018);
+   mesh.beam([side*.28,.39,-.08],[side*.28,.39,.12],.012,p.brass);
+  }
  }else if(gun){
   mesh.bevel(0,.19,.06,.55,.14,.62,leather);mesh.beam([-.3,.18,0],[.3,.18,0],.035,p.metal);
   for(const x of [-.3,.3])wheel(mesh,x,.2,0,.2,pose.walking?pose.step:0,p,industrial);
