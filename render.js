@@ -267,7 +267,7 @@ function drawLandingDust(c,step){
  c.restore();
 }
 // Pixel-sized, deterministic diamond chips: one burst per actual HP point.
-function drawGemFragments(c,u,frame){
+export function drawGemFragments(c,u,frame){
  if(!u||frame.progress>=1)return;
  const x=u.x*32+4+frame.index*4+1.5,y=u.y*32+29.5,p=frame.progress;
  const colors=frame.heal?['#e6fff3','#8cd8bf','#baffdf']:frame.armoured?['#f3d9a0','#c3b4c0','#b3a1a0']:u.team==='ally'?['#f4ecff','#d9cbf0','#f5d99e']:['#fff1d6','#ffd0ac','#f7c58d'];
@@ -282,7 +282,7 @@ function drawGemFragments(c,u,frame){
  c.restore();
 }
 // Issue #101: the number appears alone above the unit, then rises a little and fades.
-function drawDamageNumber(c,s,e){
+export function drawDamageNumber(c,s,e){
  const pop=Math.min(1,e.pop??1),size=Math.round(12+6*Math.sin(Math.min(1,pop*1.4)*Math.PI/2));
  const x=Math.max(14,Math.min(s.map.w*32-14,e.x*32+16)),y=Math.max(14,e.y*32-19-e.progress*10);
  c.save();c.globalAlpha=Math.max(0,1-Math.max(0,e.progress-.35)*1.6);c.font=`bold ${size}px system-ui`;c.textAlign='center';
@@ -290,7 +290,7 @@ function drawDamageNumber(c,s,e){
 }
 // Issue #101: while gems break, the HP row is shown enlarged on a plate just above the unit,
 // clamped inside the map so edges never cut it off; one lost gem breaks per beat.
-function drawGemCloseUp(c,s,u,frame){
+export function drawGemCloseUp(c,s,u,frame){
  if(!u)return;
  const z=1.6,gw=4*z,w=6*gw+6,h=Math.round(7*z)+4;
  const left=Math.max(1,Math.min(s.map.w*32-w-1,u.x*32+16-w/2)),top=Math.max(1,u.y*32-h-2);

@@ -398,3 +398,8 @@ a{color:#e4c8f0}
 @media(max-height:500px) and (min-width:600px){#modal:has(#deploymentList){width:310px;max-height:96dvh;margin:6px 8px 6px auto}}
 
 .sample-preview{display:block}
+
+/* Trial-only 3D shares the existing scroll plane and fixed dock. */
+#mapViewport{position:relative}
+#mapViewport[data-renderer=webgl] #battlefield{position:relative;image-rendering:auto}
+#rendererNotice{position:absolute;left:5px;right:55px;top:76px;z-index:6;pointer-events:none;background:#15232bea;color:#ffe6bb;padding:7px;font-size:12px}
