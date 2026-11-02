@@ -1,7 +1,7 @@
 import {weaponProfile,isBossUnit} from './weapon-fx.js?v=0.8.0-weapon48';
 import {feedbackStyle} from './combat-fx.js?v=0.8.0-fx39';
 import {gemPlan,gemHP,gemSchedule} from './gem-effects.js?v=0.8.0-gems28';
-import {weightySchedule,crystalSchedule,enemyBeat} from './trial-profiles.js?v=trial92-crystal101';
+import {weightySchedule,crystalSchedule,enemyBeat} from './trial-profiles.js?v=trial92-crystal101-mixed107';
 // Only presentation lives here; all rules have already resolved synchronously.
 export function tween(duration,update){
  if(!duration||document.hidden){update(1);return Promise.resolve();}

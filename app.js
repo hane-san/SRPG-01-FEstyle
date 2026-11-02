@@ -1,20 +1,20 @@
-import {openTacticalLab} from './tactical-lab.js?v=trial90';
-import {AI_PROFILES,HIT_PROFILES,DEFAULT_HIT,lowHpPulse} from './trial-profiles.js?v=trial92-crystal101';
-import {riskCue,hasAnnouncedCannon,combatCue,thumbSide,buildThreatIndex,indexedThreat,warningFocus} from './tactical-ui.js?v=0.8.0-ui55-warnjump';
+import {openTacticalLab} from './tactical-lab.js?v=trial90-mixed107';
+import {AI_PROFILES,HIT_PROFILES,DEFAULT_HIT,lowHpPulse,mixedRole,roleNote} from './trial-profiles.js?v=mixed107';
+import {riskCue,hasAnnouncedCannon,combatCue,thumbSide,buildThreatIndex,indexedThreat,warningFocus} from './tactical-ui.js?v=0.8.0-ui55-warnjump-mixed107';
 import {hudSignals,routeIntent} from './ui-hud.js?v=0.8.0-hud50';
 import {openGemDemo} from './gem-demo.js?v=0.8.0-gems28';
 import {appendChapter,chronicleLines} from './chronicle.js?v=0.8.0-war43';
 import {RELEASE,SKILLS,PROMOTIONS,RULES,CLASS_ROLES} from './config.js?v=0.8.0-p3-26-sortie29-classes68';
 import {MAPS} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
-import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-trial92';
-import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96-trial92-art97-crystal101';
+import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-trial92-mixed107';
+import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96-trial92-art97-crystal101-mixed107';
 import {bindMapInput,createHoldLock,bindReserveInput} from './ui-input.js?v=trial90';
 import {readSave,writeSave} from './save.js?v=0.8.0-p3-26-save37-war43-classes68';
-import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
+import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107';
 import {createAudio} from './audio.js?v=0.8.0-issue17-sortie29-issue24-gems28-flick35-weapon48';
 import {createMusic,buildTrack,SCORES,BONUS_SCORES,MUSIC_LIBRARY,trackNumber,assignedTrackNumber,trackByNumber,THEME_SCORE_START} from './music.js?v=0.8.0-library42-theme104';
 import {STYLE_THEME} from './music-theme.js?v=theme104';
-import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-ui96-trial92-crystal101';
+import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-ui96-trial92-crystal101-mixed107';
 import {DISPLAY_NAME} from './display-name.js?v=0.8.0-display-2fb0ebb2368b';
 const $=id=>document.getElementById(id),canvas=$('battlefield'),vp=$('mapViewport');
 // The preview is a separate, nonpersistent URL session. Normal saves are never read/written here.
@@ -551,7 +551,9 @@ function setTrialParam(key,value){const url=new URL(location.href);if(value===(k
 // AI changes always restart from the checkpoint; hit feel only changes presentation.
 function restartFromCheckpoint(ai=trialAI){
  if(!turnCheckpoint)return;trialAI=ai;setTrialParam('ai',ai);
- s=structuredClone(turnCheckpoint);s.trial={ai};turnCheckpoint=structuredClone(s);
+ s=structuredClone(turnCheckpoint);
+ if(s.trial?.ai!==ai)for(const e of s.units)delete e.trialAwake;
+ s.trial={ai};turnCheckpoint=structuredClone(s);
  pendingUndo=null;battleCard=null;lastNotice={title:`敵AI：${AI_PROFILES[ai].label}`,text:`T${s.turn}の開始時から再開しました`,tail:AI_PROFILES[ai].note};
  resetSelection();close();refresh();
 }
@@ -567,6 +569,17 @@ function addComparisonControls(root){
   themeMusic=!themeMusic;const url=new URL(location.href);if(themeMusic)url.searchParams.delete('music');else url.searchParams.set('music','fixed');history.replaceState(null,'',url);applyThemeMusic();showMenu();
  },'wide subtle');theme.id='themeMusicToggle';theme.setAttribute('aria-pressed',String(themeMusic));
  section.append(ai,note,hit,theme,button(`同じ状態からやり直す（T${turnCheckpoint?.turn??s.turn}開始時）`,()=>restartFromCheckpoint(trialAI),'wide subtle'));
+ if(trialAI==='mixed'){
+  const roles=document.createElement('details');roles.id='enemyRoles';
+  const summary=document.createElement('summary');summary.textContent='敵の役割・持ち場・発動条件（混成 v1）';roles.append(summary);
+  const hint=document.createElement('p');hint.className='hint';hint.textContent='座標は左上から数えます。縄張り迎撃の敵を選ぶと感知境界を点線表示。赤い危険域は役割によらない最大移動・射程の目安です。';roles.append(hint);
+  for(const e of E.alive(s,'enemy')){
+   const role=mixedRole(s,e),home=s.map.enemies.find(a=>a.id===e.id)||e;
+   const p=document.createElement('p');p.dataset.enemyId=e.id;
+   p.textContent=`${e.name}（${e.id}）｜${role?.label??'現行'}｜持ち場 ${home.x+1},${home.y+1}｜${roleNote(role)}`;roles.append(p);
+  }
+  section.append(roles);
+ }
  root.append(section);
 }
 function showMenu(){if(locked)return;

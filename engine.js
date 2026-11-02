@@ -1,9 +1,11 @@
 import {RULES,TERRAINS,PROMOTIONS} from './config.js?v=0.8.0-p3-26-sortie29-classes68';
 import {MAPS,ROSTER,unit,positions,enemy as enemySpec} from './data.js?v=0.8.0-issue17-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
-import {aiProfile,LURE_WAKE,LURE_LEASH,LINE_REACH,LINE_REACH_RANGED,LINE_FOCUS_PENALTY} from './trial-profiles.js?v=trial92';
+import {aiProfile,mixedRole,LURE_WAKE,LURE_LEASH,LINE_REACH,LINE_REACH_RANGED,LINE_FOCUS_PENALTY} from './trial-profiles.js?v=mixed107';
 export const WEATHER={clear:{label:'雨なし',foot:0,horse:0},light:{label:'小雨',foot:2,horse:3},heavy:{label:'大雨',foot:3,horse:4}};
 export function weatherAt(s,turn=s.turn){const cycle=s.map.weatherCycle;return cycle?.[(turn-1)%cycle.length]||'clear';}
 export function movement(s,u){const weather=WEATHER[weatherAt(s)];return Math.max(1,u.move-weather[u.type==='horse'?'horse':'foot']);}
+// Conservative threat budget: a mixed role may mobilise an original hold unit.
+export const enemyMovement=(s,e)=>!mixedRole(s,e)&&e.ai==='hold'?0:movement(s,e);
 export const dist=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
 export const key=p=>`${p.x},${p.y}`;
 export const alive=(s,team)=>s.units.filter(u=>u.alive&&u.deployed!==false&&(!team||u.team===team));
@@ -121,7 +123,7 @@ export function damage(s,a,b,bonus=0){
  return Math.max(1,power+bonus+cavalryBonus-(b.def||0)-stance-(b.guard||0));
 }
 export function prediction(s,u,target,position=u,bonus=0){const a={...u,...position};const dealt=damage(s,a,target,bonus);return {damage:dealt,counter:dealt>=target.hp||target.command==='support'||target.command==='heal'||!canNormalAttack(target)||!inRange(target,a)?0:damage(s,target,a,target.specialty==='counter'?1:0)};}
-export function threatAt(s,p,u){return alive(s,'enemy').filter(e=>reachable(s,e,e.ai==='hold'?0:movement(s,e),{threat:true}).some(n=>inRange({...e,...n},p))).reduce((sum,e)=>sum+damage(s,e,{...u,...p}),0);}
+export function threatAt(s,p,u){return alive(s,'enemy').filter(e=>reachable(s,e,enemyMovement(s,e),{threat:true}).some(n=>inRange({...e,...n},p))).reduce((sum,e)=>sum+damage(s,e,{...u,...p}),0);}
 function hurt(s,u,n,reason){u.hp=Math.max(0,u.hp-n);if(u.hp===0&&u.alive){u.alive=false;u.command=null;s.metrics.deaths.push({turn:s.turn,id:u.id,reason});if(u.team==='ally'&&u.named&&s.settings.mode==='classic'&&!s.lost.includes(u.id))s.lost.push(u.id);log(s,`${u.name} ${u.team==='enemy'?'撃破':s.settings.mode==='classic'?'永久離脱':'撤退（次章復帰）'}`);}}
 const noop=()=>{};
 function moveUnit(s,u,dest,observe){
@@ -179,23 +181,36 @@ export function enemyPhase(s,observe=()=>{}){
  // Trial profiles (#93) exist only on the standalone comparison screen; campaign state has no s.trial.
  const ai=aiProfile(s),focused=new Set();
  for(const e of alive(s,'enemy')){if(s.status!=='playing')break;
- const friends=alive(s,'ally');let positions=reachable(s,e,e.ai==='hold'?0:movement(s,e));const home=s.map.enemies.find(a=>a.id===e.id)||e;
- if(e.ai==='defend')positions=positions.filter(p=>dist(p,home)<=3);
- const trial=ai!=='current'&&!['hold','raid'].includes(e.ai);let returnHome=false;
- if(trial&&ai==='line'){positions=positions.filter(p=>dist(p,home)<=(e.range[1]>1?LINE_REACH_RANGED:LINE_REACH));returnHome=true;}
- if(trial&&ai==='lure'){
+ const role=mixedRole(s,e),baseAI=role?'advance':e.ai;
+ const strategy=role?(role.kind==='guard'?'line':role.kind==='territory'?'lure':'advance'):ai;
+ const friends=alive(s,'ally');let positions=reachable(s,e,baseAI==='hold'?0:movement(s,e));const home=s.map.enemies.find(a=>a.id===e.id)||e;
+ if(baseAI==='defend')positions=positions.filter(p=>dist(p,home)<=3);
+ const trial=role||ai!=='current'&&ai!=='mixed'&&!['hold','raid'].includes(baseAI);let returnHome=false,returnOnly=false;
+ if(trial&&strategy==='line'){
+  const radius=role?.radius??(e.range[1]>1?LINE_REACH_RANGED:LINE_REACH),within=positions.filter(p=>dist(p,home)<=radius);
+  // A checkpoint may place a former attacker outside its new guard zone. Walk
+  // back legally instead of getting an empty candidate list forever.
+  if(role&&!within.length)returnOnly=true;
+  else positions=within;
+  returnHome=true;
+ }
+ if(trial&&strategy==='lure'){
   if(!e.trialAwake&&friends.some(a=>dist(a,home)<=LURE_WAKE))e.trialAwake=true;
   if(e.trialAwake&&!friends.some(a=>dist(a,home)<=LURE_LEASH+e.range[1])){returnHome=true;if(dist(e,home)===0)e.trialAwake=false;}
-  positions=e.trialAwake?positions.filter(p=>dist(p,home)<=LURE_LEASH):positions.filter(p=>dist(p,e)===0);
+  if(role&&!e.trialAwake&&dist(e,home)>0)returnHome=true;
+  if(role&&returnHome){
+   const within=positions.filter(p=>dist(p,home)<=LURE_LEASH);
+   if(within.length)positions=within;else returnOnly=true;
+  }else positions=e.trialAwake?positions.filter(p=>dist(p,home)<=LURE_LEASH):positions.filter(p=>dist(p,e)===0);
  }
- if(e.ai==='skirmish'){const nearby=friends.filter(a=>a.x<9);if(!nearby.length)continue;}
- if(e.ai==='raid'&&s.map.base&&positions.some(p=>dist(p,s.map.base)===0)){moveUnit(s,e,s.map.base,observe);log(s,`${e.name}が本陣へ突入`);checkOutcome(s);observe(s,e,{kind:'settled',actor:e.id});continue;}
- const targets=e.ai==='skirmish'?friends.filter(a=>a.x<9):friends;
- const shots=[];for(const p of positions)for(const t of targets)if(inRange({...e,...p},t))shots.push({p,t,score:(damage(s,e,t)>=t.hp?100:0)+(e.ai==='raid'&&['healer','medic','bow'].includes(t.type)?12:0)+damage(s,e,t)-t.hp/10-(trial&&ai==='line'&&focused.has(t.id)&&damage(s,e,t)<t.hp?LINE_FOCUS_PENALTY:0)});
+ if(baseAI==='skirmish'){const nearby=friends.filter(a=>a.x<9);if(!nearby.length)continue;}
+ if(baseAI==='raid'&&s.map.base&&positions.some(p=>dist(p,s.map.base)===0)){moveUnit(s,e,s.map.base,observe);log(s,`${e.name}が本陣へ突入`);checkOutcome(s);observe(s,e,{kind:'settled',actor:e.id});continue;}
+ const targets=baseAI==='skirmish'?friends.filter(a=>a.x<9):friends;
+ const shots=[];if(!returnOnly)for(const p of positions)for(const t of targets)if(inRange({...e,...p},t))shots.push({p,t,score:(damage(s,e,t)>=t.hp?100:0)+(baseAI==='raid'&&['healer','medic','bow'].includes(t.type)?12:0)+damage(s,e,t)-t.hp/10-(trial&&strategy==='line'&&focused.has(t.id)&&damage(s,e,t)<t.hp?LINE_FOCUS_PENALTY:0)});
  shots.sort((a,b)=>b.score-a.score||a.p.cost-b.p.cost||a.t.y-b.t.y||a.t.x-b.t.x||a.p.y-b.p.y||a.p.x-b.p.x);
  if(shots.length){const {p,t}=shots[0];moveUnit(s,e,p,observe);const hp=t.hp;strike(s,e,t,0,true,observe);if(t.hp<hp)t.hurtTurn=s.turn;focused.add(t.id);}
- else if(e.ai!=='hold'){
-  const goal=returnHome?(dist(e,home)?home:null):e.ai==='raid'&&s.map.base?s.map.base:[...targets].sort((a,b)=>dist(e,a)-dist(e,b)||a.y-b.y||a.x-b.x)[0];
+ else if(baseAI!=='hold'){
+  const goal=returnHome?(dist(e,home)?home:null):baseAI==='raid'&&s.map.base?s.map.base:[...targets].sort((a,b)=>dist(e,a)-dist(e,b)||a.y-b.y||a.x-b.x)[0];
   if(goal){ // Global distance field avoids getting stuck behind a river or a wall.
    const field=distanceField(s,goal,e.team);positions.sort((a,b)=>(field.get(key(a))??Infinity)-(field.get(key(b))??Infinity)||a.cost-b.cost||a.y-b.y||a.x-b.x);
    if(positions[0]&&Number.isFinite(field.get(key(positions[0]))))moveUnit(s,e,positions[0],observe);

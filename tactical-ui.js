@@ -43,7 +43,7 @@ export function thumbSide(value){return value==='left'?'left':'right';}
 // per-enemy reachable(...).some(inRange), including stationary "hold" enemies.
 export function buildThreatIndex(state,engine){
  return engine.alive(state,'enemy').map(enemy=>{
-  const cells=new Set(),steps=engine.reachable(state,enemy,enemy.ai==='hold'?0:engine.movement(state,enemy),{threat:true});
+  const cells=new Set(),steps=engine.reachable(state,enemy,engine.enemyMovement(state,enemy),{threat:true});
   const [min,max]=enemy.range;
   for(const p of steps)for(let dx=-max;dx<=max;dx++)for(let dy=-max;dy<=max;dy++){
    const dist=Math.abs(dx)+Math.abs(dy),x=p.x+dx,y=p.y+dy;
