@@ -161,10 +161,13 @@ export function unitMesh(mesh,u,theme,pose){
   else{mesh.bevel(0,.13,0,.12,.28,.56,p.wood);for(const x of [-.27,.27])mesh.beam([x,.18,.22],[0,.22,-.13],.04,p.wood);mesh.beam([-.27,.18,.22],[.27,.18,.22],.012,p.metal);}
   mesh.pop();torso=.71;
  }
+ // The gun crew shares one body frame behind the carriage: neck, belt and
+ // arms must follow the torso instead of floating in front of it.
+ if(gun)mesh.push({z:-.18});
  if(!mounted){
   for(const side of [-1,1]){
    const stride=side*walk*heavy,knee=pose.walking?Math.max(0,-stride)*.8:(pose.brace||0)*.08;
-   mesh.push({x:side*.102,y:torso-.26,z:gun?-.19:0,rx:stride-(pose.brace||0)*.04});
+   mesh.push({x:side*.102,y:torso-.26,z:0,rx:stride-(pose.brace||0)*.04});
    mesh.ellipsoid(0,-.105,0,.079,.145,.083,coat,10,6);
    mesh.push({y:-.225,rx:knee});mesh.ellipsoid(0,0,.018,.068,.06,.065,armour?metal:leather,10,6);
    mesh.ellipsoid(0,-.105,0,.055,.125,.06,leather,10,6);mesh.bevel(0,-.205,.045,.14,.1,.22,p.dark,.022);mesh.pop();mesh.pop();
@@ -172,7 +175,7 @@ export function unitMesh(mesh,u,theme,pose){
  }
  torso+=pose.breath;
  // Torso silhouette, cuirass/coat seams, shoulder armour and cloak are distinct.
- mesh.ellipsoid(0,torso-.04,gun?-.18:0,armour?.205:.17,.225,.135,armour?metal:coat,12,7);
+ mesh.ellipsoid(0,torso-.04,0,armour?.205:.17,.225,.135,armour?metal:coat,12,7);
  mesh.bevel(0,torso-.15,0,.28,.1,.23,leather,.025);mesh.box(0,torso-.15,.127,.06,.055,.025,p.brass);
  if(armour){mesh.beam([0,torso+.13,.145],[0,torso-.1,.145],.016,p.brass);for(const side of [-1,1])mesh.ellipsoid(side*.205,torso+.13,0,.105,.09,.14,metal,10,6);}
  if(industrial){
@@ -214,7 +217,7 @@ export function unitMesh(mesh,u,theme,pose){
  // Arms pivot with the actual shared windup. Shield braces, bow draws, mage raises.
  for(const side of [-1,1]){
   const arm=pose.attack*(u.type==='bow'?(side>0?-.9:.4):u.type==='mage'?-.8:side>0?-1.45:-.2)+(pose.walking?-side*walk*.25:0);
-  mesh.push({x:side*(armour?.24:.2),y:torso+.12,z:gun?-.15:0,rx:arm-pose.hit*.5});
+  mesh.push({x:side*(armour?.24:.2),y:torso+.12,z:0,rx:arm-pose.hit*.5});
   mesh.ellipsoid(0,-.085,0,armour?.09:.066,.13,.075,armour?metal:coat,10,6);
   mesh.push({y:-.18,rx:-.13-(pose.brace||0)*.18});
   mesh.ellipsoid(0,-.075,.025,.059,.115,.059,armour?metal:coat,10,6);mesh.ellipsoid(0,-.18,.05,.053,.058,.049,skin,10,6);
@@ -236,5 +239,5 @@ export function unitMesh(mesh,u,theme,pose){
   mesh.pop();mesh.pop();
  }
  if(u.type==='bow')mesh.bevel(-.13,torso+.02,-.2,.13,.39,.11,leather,.02);
- mesh.pop();mesh.pop();
+ if(gun)mesh.pop();mesh.pop();mesh.pop();
 }
