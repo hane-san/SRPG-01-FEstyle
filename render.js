@@ -1,11 +1,11 @@
 import {paintFantasyTerrain,paintFantasyCamp,FANTASY_COLORS,paintThemedUnit} from './fantasy-theme.js?v=trial90-art97';
-import {LURE_WAKE} from './trial-profiles.js?v=trial92';
+import {LURE_WAKE,mixedRole} from './trial-profiles.js?v=mixed107';
 import {paintIndustrialTerrain,paintIndustrialCamp,INDUSTRIAL_COLORS} from './sample-theme.js?v=sample76-art97';
 import {weaponFrame,bossFracture,isBossUnit} from './weapon-fx.js?v=0.8.0-weapon48';
 import {impactFrame,landingFrame} from './combat-fx.js?v=0.8.0-fx39';
-import {tacticalRanges,attackTargets} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
+import {tacticalRanges,attackTargets} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107';
 import {RULES} from './config.js?v=0.8.0-p3-26-classes68';
-import {alive,reachable,inRange,key,terrain,supportRange,supportTargets,waitCommand,movement as moveBudget,weatherAt} from './engine.js?v=0.8.0-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
+import {alive,reachable,inRange,key,terrain,supportRange,supportTargets,waitCommand,enemyMovement,weatherAt} from './engine.js?v=mixed107';
 export const COLORS={'.':'#889968','=':'#baad7c',f:'#5c7957','~':'#688f9a','#':'#79827b','+':'#9c8157',c:'#8b9581',v:'#a69b71'};
 const PALETTES=[
  {'.':'#919e7b','=':'#beb792',f:'#627d68','~':'#769aab'},
@@ -24,13 +24,13 @@ function layers(canvas,s,view){
  let cache=caches.get(canvas);if(!cache){cache={terrainBuilds:0,rangeBuilds:0,boardBuilds:0};caches.set(canvas,cache);}
  const mapKey=JSON.stringify([s.map.id,s.map.w,s.map.h,s.map.tiles,view.sampleTheme||null]),weather=weatherAt(s);
  if(cache.mapKey!==mapKey){cache.terrain=surface(s);(view.sampleTheme==='industrial'?paintIndustrialTerrain(cache.terrain.getContext('2d'),s.map):view.sampleTheme==='fantasy'?paintFantasyTerrain(cache.terrain.getContext('2d'),s.map):paintTerrain(cache.terrain.getContext('2d'),s));cache.mapKey=mapKey;cache.terrainBuilds++;}
- const rangeKey=JSON.stringify([mapKey,weather,view.selected,!!view.danger,s.units.map(u=>[u.id,u.team,u.alive,u.acted,u.x,u.y,u.move,u.range,u.ai,u.type,u.skill,u.deployed])]);
+ const rangeKey=JSON.stringify([mapKey,weather,s.trial?.ai,view.selected,!!view.danger,s.units.map(u=>[u.id,u.team,u.alive,u.acted,u.x,u.y,u.move,u.range,u.ai,u.type,u.skill,u.deployed])]);
  const selected=view.sortie?view.sortieUnit:s.units.find(u=>u.id===view.selected);
  if(cache.rangeKey!==rangeKey){
   const movement=selected?.team==='ally'&&!selected.acted?reachable(s,selected):[];
   Object.assign(cache,movement.length?tacticalRanges(s,selected,movement):{moves:new Set(),attacks:new Set()});cache.danger=new Set();
   if(view.danger||selected?.team==='enemy')for(const e of selected?.team==='enemy'?[selected]:alive(s,'enemy')){
-   for(const p of reachable(s,e,e.ai==='hold'?0:moveBudget(s,e),{threat:true}))
+   for(const p of reachable(s,e,enemyMovement(s,e),{threat:true}))
     for(let y=Math.max(0,p.y-e.range[1]);y<=Math.min(s.map.h-1,p.y+e.range[1]);y++)
      for(let x=Math.max(0,p.x-e.range[1]);x<=Math.min(s.map.w-1,p.x+e.range[1]);x++){
      const t={x,y};if(terrain(s,t)&&inRange({...e,...p},t))cache.danger.add(key(t));
@@ -98,8 +98,9 @@ function paintTactics(c,s,view,selected,{moves,attacks,danger}){
   }
  }
  // Trial lure (#93): the dotted ring is the area that wakes a waiting enemy.
- if(s.trial?.ai==='lure')for(const e of alive(s,'enemy')){
-  if(e.trialAwake||['hold','raid'].includes(e.ai))continue;const home=s.map.enemies.find(a=>a.id===e.id)||e;
+ if(['lure','mixed'].includes(s.trial?.ai))for(const e of alive(s,'enemy')){
+  if(s.trial.ai==='mixed'?selected?.id!==e.id||mixedRole(s,e)?.kind!=='territory':e.trialAwake||['hold','raid'].includes(e.ai))continue;
+  const home=s.map.enemies.find(a=>a.id===e.id)||e;
   c.fillStyle='#ffd58acc';
   for(let dy=-LURE_WAKE;dy<=LURE_WAKE;dy++){const dx=LURE_WAKE-Math.abs(dy);for(const x of new Set([home.x-dx,home.x+dx])){const y=home.y+dy;if(x>=0&&y>=0&&x<s.map.w&&y<s.map.h){c.fillRect(x*32+14,y*32+14,4,4);}}}
  }

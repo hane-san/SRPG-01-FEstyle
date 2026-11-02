@@ -9,14 +9,15 @@ import {createTacticalObserver} from './tactical-observer.mjs';
 // This affects only test-agent choices, not any unit's game rules.
 const oldPolicyClass=u=>u.type==='mage'&&['a5','general-a5'].includes(u.id)?'healer':u.type==='mage'&&['a8','general-a8','aux-medic'].includes(u.id)?'medic':u.type;
 const oldPolicyHealer=u=>['healer','medic'].includes(oldPolicyClass(u));
-export function play(mapId,policy='advance',opts={},maxTurns=35,lost=[],initialMap=null){const s=E.createGame(mapId,opts,lost);
+export function play(mapId,policy='advance',opts={},maxTurns=35,lost=[],initialMap=null,trialAI=null){const s=E.createGame(mapId,opts,lost);
+ if(trialAI)s.trial={ai:trialAI}; // Explicit test-only comparison; baseline calls are unchanged.
  if(initialMap){s.map=structuredClone(initialMap);s.units=[...s.units.filter(u=>u.team==='ally'),...s.map.enemies.map(e=>unit(e,'enemy',s.settings))];}
  const telemetry=createTacticalObserver(s);let reachedEast=false,firstCombatTurn=null,hits=0,heals=0,movementSteps=0;const combatTurns=new Set(),garrison=s.map.base?E.alive(s,'ally').filter(u=>E.dist(u,s.map.base)===0||u.skill==='heal'&&E.dist(u,s.map.base)===1).map(u=>u.id):[];
  const observe=(state,actor,event)=>{telemetry.observe(state,actor,event);if(event?.kind==='hit'){firstCombatTurn??=state.turn;combatTurns.add(state.turn);hits++;}else if(event?.kind==='heal')heals++;else if(event?.kind==='move')movementSteps+=event.path.length-1;};
  while(s.status==='playing'&&s.turn<=maxTurns){
   telemetry.beginTurn(s);
   const enemies=E.alive(s,'enemy');
-  const enemyReach=enemies.map(e=>({e,positions:E.reachable(s,e,e.ai==='hold'?0:E.movement(s,e),{threat:true})}));
+  const enemyReach=enemies.map(e=>({e,positions:E.reachable(s,e,E.enemyMovement(s,e),{threat:true})}));
   function risk(p,u){return enemyReach.reduce((v,{e,positions})=>v+(positions.some(n=>E.inRange({...e,...n},p))?E.damage(s,e,{...u,...p}):0),0);}
   // Fighters first, healers after movement to recover them. Bow before melee where possible.
   // Issue #29: everyone starts in the castle reserve. Sortie candidates are planned
