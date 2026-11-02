@@ -90,6 +90,10 @@ try{
   assert.ok(stats.triangles<=120000&&stats.gpuBytes<=12960000);
   assert.ok(stats.framebufferPixels<=2097152,'bounded non-MSAA backing surface');
   if(width===390&&mode==='normal')await page.screenshot({path:`test-results/webgl-${id}-${theme}.png`});
+  const edgeCenter=await page.evaluate(()=>window.srpgDebug.center());
+  await page.evaluate(()=>window.srpgDebug.setRenderer('2d'));await page.evaluate(()=>window.srpgDebug.setRenderer('webgl'));
+  const returnedCenter=await page.evaluate(()=>window.srpgDebug.center());
+  assert.ok(Math.abs(returnedCenter.x-edgeCenter.x)<.05&&Math.abs(returnedCenter.y-edgeCenter.y)<.05,'edge camera centre survives a 2D/3D round trip');
   rows.push({width,height,id,theme,mode,...stats});console.log(JSON.stringify({webglCase:rows.length,width,id,theme,mode}));await context.close();
  }
  // Class actions use the same observer clock: horse travel, shield defence, bow
@@ -119,6 +123,19 @@ try{
  // Resource lifecycle, preserved draft and camera, loss/restore, unavailable fallback.
  for(const [width,height]of [[320,568],[360,740],[390,844],[844,390]]){
   const context=await browser.newContext({viewport:{width,height},isMobile:true,hasTouch:true,reducedMotion:'reduce'}),page=await context.newPage();
+  await context.addInitScript(()=>{
+   const buffers=new Set(),programs=new Set(),contexts=new Set();let audioContexts=0;
+   for(const [create,del,set]of [['createBuffer','deleteBuffer',buffers],['createProgram','deleteProgram',programs]]){
+    const make=WebGLRenderingContext.prototype[create],remove=WebGLRenderingContext.prototype[del];
+    WebGLRenderingContext.prototype[create]=function(...args){const value=make.apply(this,args);if(value)set.add(value);return value;};
+    WebGLRenderingContext.prototype[del]=function(value){set.delete(value);return remove.call(this,value);};
+   }
+   const get=HTMLCanvasElement.prototype.getContext;
+   HTMLCanvasElement.prototype.getContext=function(type,...args){const result=get.call(this,type,...args);if(type==='webgl'&&result)contexts.add(result);return result;};
+   if(window.AudioContext)window.AudioContext=new Proxy(window.AudioContext,{construct(target,args,newTarget){audioContexts++;return Reflect.construct(target,args,newTarget);}});
+   document.addEventListener('webglcontextlost',()=>{buffers.clear();programs.clear();},true);
+   window.gpuAudit=()=>({buffers:buffers.size,programs:programs.size,contexts:contexts.size,audioContexts});
+  });
   await ready(page,`${base}/?sample=04&style=fantasy&renderer=webgl&debug=1`);
   await page.evaluate(s=>window.srpgDebug.loadTrial(s),fixture(3).s);await page.evaluate(()=>window.srpgDebug.select('a'));
   // A held real gesture cannot switch the renderer or consume a command.
@@ -132,10 +149,14 @@ try{
   await page.locator('#minimap').click({position:{x:22,y:44}});
   const snapshot=await page.evaluate(()=>window.srpgDebug.snapshot()),draft=await page.evaluate(()=>window.srpgDebug.draft()),music=await page.evaluate(()=>window.srpgDebug.music());
   const center=await page.evaluate(()=>window.srpgDebug.center());
+  const audioCount=await page.evaluate(()=>window.gpuAudit().audioContexts);
   for(let i=0;i<8;i++){
    await page.evaluate(()=>window.srpgDebug.setRenderer('2d'));assert.equal(await page.evaluate(()=>window.srpgDebug.renderer().buffers),0);
+   assert.equal(await page.evaluate(()=>window.gpuAudit().buffers),0,'actual WebGL buffers were deleted');
+   assert.equal(await page.evaluate(()=>window.gpuAudit().programs),0,'actual program was deleted');
    await page.evaluate(()=>window.srpgDebug.setRenderer('webgl'));
    const now=await page.evaluate(()=>window.srpgDebug.renderer());assert.equal(now.buffers,2);assert.equal(now.programs,1);assert.equal(now.contexts,1);
+   assert.deepEqual(await page.evaluate(()=>window.gpuAudit()),{buffers:2,programs:1,contexts:1,audioContexts:audioCount},'native GPU/audio allocations stay bounded');
   }
   assert.deepEqual(await page.evaluate(()=>window.srpgDebug.snapshot()),snapshot);assert.deepEqual(await page.evaluate(()=>window.srpgDebug.draft()),draft);
   assert.deepEqual(await page.evaluate(()=>window.srpgDebug.music()),music,'renderer switching creates no audio sources');
