@@ -1,5 +1,5 @@
 import {openTacticalLab} from './tactical-lab.js?v=trial90';
-import {AI_PROFILES,HIT_PROFILES} from './trial-profiles.js?v=trial92';
+import {AI_PROFILES,HIT_PROFILES,DEFAULT_HIT,lowHpPulse} from './trial-profiles.js?v=trial92-crystal101';
 import {riskCue,hasAnnouncedCannon,combatCue,thumbSide,buildThreatIndex,indexedThreat,warningFocus} from './tactical-ui.js?v=0.8.0-ui55-warnjump';
 import {hudSignals,routeIntent} from './ui-hud.js?v=0.8.0-hud50';
 import {openGemDemo} from './gem-demo.js?v=0.8.0-gems28';
@@ -7,13 +7,13 @@ import {appendChapter,chronicleLines} from './chronicle.js?v=0.8.0-war43';
 import {RELEASE,SKILLS,PROMOTIONS,RULES,CLASS_ROLES} from './config.js?v=0.8.0-p3-26-sortie29-classes68';
 import {MAPS} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-trial92';
-import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96-trial92-art97';
+import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96-trial92-art97-crystal101';
 import {bindMapInput,createHoldLock,bindReserveInput} from './ui-input.js?v=trial90';
 import {readSave,writeSave} from './save.js?v=0.8.0-p3-26-save37-war43-classes68';
 import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import {createAudio} from './audio.js?v=0.8.0-issue17-sortie29-issue24-gems28-flick35-weapon48';
 import {createMusic,buildTrack,SCORES,BONUS_SCORES,MUSIC_LIBRARY,trackNumber,assignedTrackNumber,trackByNumber} from './music.js?v=0.8.0-library42';
-import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-ui96-trial92';
+import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-ui96-trial92-crystal101';
 import {DISPLAY_NAME} from './display-name.js?v=0.8.0-display-2fb0ebb2368b';
 const $=id=>document.getElementById(id),canvas=$('battlefield'),vp=$('mapViewport');
 // The preview is a separate, nonpersistent URL session. Normal saves are never read/written here.
@@ -29,7 +29,7 @@ const STYLES={original:'現行',industrial:'工業幻想',fantasy:'古典ファ�
 // Profiles live in the URL and on s.trial only here; the campaign never sees them.
 const trialParams=new URLSearchParams(location.search);
 let trialAI=sampleMode&&Object.hasOwn(AI_PROFILES,trialParams.get('ai'))?trialParams.get('ai'):'current';
-let trialHit=sampleMode&&Object.hasOwn(HIT_PROFILES,trialParams.get('hit'))?trialParams.get('hit'):'current';
+let trialHit=sampleMode&&Object.hasOwn(HIT_PROFILES,trialParams.get('hit'))?trialParams.get('hit'):DEFAULT_HIT;
 let turnCheckpoint=null;
 const requestedStyle=new URLSearchParams(location.search).get('style');
 let previewStyle=Object.hasOwn(STYLES,requestedStyle)?requestedStyle:'industrial';
@@ -87,6 +87,13 @@ function recenter(p,warningVisit=false){if(!warningVisit)warningReturn=null;vp.s
 function fit(){lastSize={w:vp.clientWidth,h:vp.clientHeight};view.tile=Math.max(20,Math.floor(vp.clientWidth/s.map.w))*[1,1.4,1.9][zoom];$('zoomLabel').textContent=['全幅','×1.4','×1.9'][zoom];}
 function drawMini(){mini($('minimap'),s,vp,view.tile,view.sampleTheme);}
 function draw(){render(canvas,s,view);drawMini();}
+// Issue #101-C: redraw slowly only while an HP1 unit is on the board and the page is visible.
+setInterval(()=>{
+ if(document.hidden)return;
+ const low=E.alive(s).some(u=>u.hp===1);
+ if(!low){if(view.lowHp){view.lowHp=null;draw();}return;}
+ view.lowHp=lowHpPulse(performance.now(),reduced());draw();
+},125);
 // Announced cells can sit outside a phone viewport: the banner says so and a tap pans there (explicit navigation, no rule effect).
 function visibleTiles(){const f=$('forecast'),top=f&&!f.hidden?f.offsetHeight:0;return {x0:vp.scrollLeft/view.tile,x1:(vp.scrollLeft+vp.clientWidth)/view.tile,y0:(vp.scrollTop+top)/view.tile,y1:(vp.scrollTop+vp.clientHeight)/view.tile};}
 let warningReturn=null;
@@ -534,7 +541,7 @@ function addTrialControls(root,compare=false){
  const lab=button('戦術実験室：攻撃・重装・P3を比べる',()=>openTacticalLab({modal,button,sound,isFast:()=>fast,isReduced:reduced,theme:view.sampleTheme}),'wide');lab.id='openTacticalLab';section.append(lab);
  root.append(section);
 }
-function setTrialParam(key,value){const url=new URL(location.href);if(value==='current')url.searchParams.delete(key);else url.searchParams.set(key,value);history.replaceState(null,'',url);}
+function setTrialParam(key,value){const url=new URL(location.href);if(value===(key==='hit'?DEFAULT_HIT:'current'))url.searchParams.delete(key);else url.searchParams.set(key,value);history.replaceState(null,'',url);}
 // AI changes always restart from the checkpoint; hit feel only changes presentation.
 function restartFromCheckpoint(ai=trialAI){
  if(!turnCheckpoint)return;trialAI=ai;setTrialParam('ai',ai);

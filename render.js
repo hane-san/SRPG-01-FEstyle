@@ -118,7 +118,7 @@ export function render(canvas,s,view){
  canvas.style.width=`${s.map.w*tile}px`;canvas.style.height=`${s.map.h*tile}px`;
  const c=canvas.getContext('2d');c.setTransform(ratio*tile/32,0,0,ratio*tile/32,0,0);c.imageSmoothingEnabled=false;
  c.drawImage(layers(canvas,s,view).board,0,0);
- const selected=s.units.find(u=>u.id===view.selected),drawStyled=(c,u)=>drawUnit(c,u,view.sampleTheme);
+ const selected=s.units.find(u=>u.id===view.selected),drawStyled=(c,u)=>drawUnit(c,u,view.sampleTheme,view.lowHp);
  if(view.route?.length>1)drawRoute(c,view.route);
  for(const u of alive(s)){
   const motion=view.motion?.id===u.id?view.motion:null;
@@ -156,7 +156,9 @@ export function render(canvas,s,view){
  if(view.impact)drawCrystalImpact(c,view.impact);
  if(view.jewel&&!view.jewel.hitStop)drawGemFragments(c,s.units.find(u=>u.id===view.jewel.id),view.jewel);
  if(view.flash){const t=s.units.find(u=>u.id===view.flash.id);if(t){c.fillStyle=view.flash.heal?`rgba(132,255,194,${view.flash.amount*.45})`:`rgba(255,247,220,${view.flash.amount*.7})`;c.fillRect(t.x*32+3,t.y*32+3,26,27);}}
- if(view.effect){const e=view.effect;c.save();c.globalAlpha=1-e.progress*.4;c.font='bold 12px system-ui';c.textAlign='center';c.lineWidth=3;c.strokeStyle='#132b32';c.fillStyle=e.heal?'#b8ffd0':'#fff2c2';const x=e.x*32+16,y=e.y*32+5-e.progress*13;c.strokeText(e.text,x,y);c.fillText(e.text,x,y);c.restore();}
+ if(view.jewel?.zoom)drawGemCloseUp(c,s,s.units.find(u=>u.id===view.jewel.id),view.jewel);
+ if(view.effect?.crystal)drawDamageNumber(c,s,view.effect);
+ else if(view.effect){const e=view.effect;c.save();c.globalAlpha=1-e.progress*.4;c.font='bold 12px system-ui';c.textAlign='center';c.lineWidth=3;c.strokeStyle='#132b32';c.fillStyle=e.heal?'#b8ffd0':'#fff2c2';const x=e.x*32+16,y=e.y*32+5-e.progress*13;c.strokeText(e.text,x,y);c.fillText(e.text,x,y);c.restore();}
  if(view.bossBreak)drawBossFracture(c,view.bossBreak);
 }
 // Class-specific weapon movement lives entirely inside existing windup frames.
@@ -279,6 +281,34 @@ function drawGemFragments(c,u,frame){
  }
  c.restore();
 }
+// Issue #101: the number appears alone above the unit, then rises a little and fades.
+function drawDamageNumber(c,s,e){
+ const pop=Math.min(1,e.pop??1),size=Math.round(12+6*Math.sin(Math.min(1,pop*1.4)*Math.PI/2));
+ const x=Math.max(14,Math.min(s.map.w*32-14,e.x*32+16)),y=Math.max(14,e.y*32-19-e.progress*10);
+ c.save();c.globalAlpha=Math.max(0,1-Math.max(0,e.progress-.35)*1.6);c.font=`bold ${size}px system-ui`;c.textAlign='center';
+ c.lineWidth=4;c.strokeStyle='#132b32';c.fillStyle=e.heal?'#b8ffd0':'#fff2c2';c.strokeText(e.text,x,y);c.fillText(e.text,x,y);c.restore();
+}
+// Issue #101: while gems break, the HP row is shown enlarged on a plate just above the unit,
+// clamped inside the map so edges never cut it off; one lost gem breaks per beat.
+function drawGemCloseUp(c,s,u,frame){
+ if(!u)return;
+ const z=1.6,gw=4*z,w=6*gw+6,h=Math.round(7*z)+4;
+ const left=Math.max(1,Math.min(s.map.w*32-w-1,u.x*32+16-w/2)),top=Math.max(1,u.y*32-h-2);
+ c.save();c.fillStyle='#15202ae6';c.fillRect(left,top,w,h);c.strokeStyle='#e8d6a6aa';c.lineWidth=1;c.strokeRect(left+.5,top+.5,w-1,h-1);
+ const ally=u.team==='ally';
+ for(let i=0;i<6;i++){
+  const gx=left+3+i*gw,gy=top+2,filled=i<frame.hp,breaking=i===frame.index&&!frame.heal;
+  const color=filled?(frame.hp<=2?'#ffd078':ally?'#c0eabe':'#ffc1a3'):'#45505b';
+  c.fillStyle=color;c.beginPath();c.moveTo(gx+gw/2,gy);c.lineTo(gx+gw-1,gy+h/2-2);c.lineTo(gx+gw/2,gy+h-4);c.lineTo(gx+1,gy+h/2-2);c.closePath();c.fill();
+  if(filled){c.fillStyle='#fff7dc';c.fillRect(gx+gw/2-1,gy+1,2,2);}
+  if(breaking&&frame.progress<1){
+   const p=frame.progress;c.globalAlpha=Math.max(0,1-p);
+   for(let k=0;k<6;k++){const a=k*Math.PI/3+.4,r=2+p*12;c.fillStyle=k%2?'#fff1d6':'#ffd0ac';c.fillRect(gx+gw/2+Math.cos(a)*r-1,gy+h/2+Math.sin(a)*r-1,3,3);}
+   c.globalAlpha=1;
+  }
+ }
+ c.restore();
+}
 // Defeat reads as the same crystal language, not an unrelated explosion.
 function drawGemCollapse(c,u,progress=0){
  if(!u)return;
@@ -316,7 +346,7 @@ function drawRoute(c,path){
 }
 function castle(c,x,y){c.fillStyle='#52645f';c.fillRect(x+3,y+10,26,19);c.fillStyle='#c6c6a5';c.fillRect(x+6,y+8,20,17);for(const xx of [4,13,23]){c.fillRect(x+xx,y+3,5,11);c.fillStyle='#e0d5af';c.fillRect(x+xx,y+3,5,3);c.fillStyle='#c6c6a5';}c.fillStyle='#354b4b';c.fillRect(x+13,y+16,7,10);}
 // One original, equipment-led silhouette per unit. No external sprite assets.
-function drawUnit(c,u,theme=null){const x=u.x*32,y=u.y*32,blue=u.team==='ally',spent=blue&&u.acted;
+function drawUnit(c,u,theme=null,lowHp=null){const x=u.x*32,y=u.y*32,blue=u.team==='ally',spent=blue&&u.acted;
  const ink=spent?'#46504e':'#21323d',col=spent?'#7c8581':blue?'#376ec0':'#bb4352',light=spent?'#b4b8a6':blue?'#9ed6f1':'#ffb09b',skin=spent?'#b6b9a2':'#efd6a4';
  const rect=(dx,dy,w,h,color)=>{c.fillStyle=color;c.fillRect(x+dx,y+dy,w,h);};
  rect(7,26,21,3,'#19363866');
@@ -362,6 +392,11 @@ function drawUnit(c,u,theme=null){const x=u.x*32,y=u.y*32,blue=u.team==='ally',s
   // A 3×5 faceted diamond silhouette reads as one distinct HP jewel.
   rect(px,28,3,3,color);rect(px+1,27,1,1,filled?'#fff7dc':'#606978');
   rect(px+1,31,1,1,filled?blue?'#8faebc':'#cd877a':'#343d48');
+ }
+ // Issue #101-C: the last gem of an HP1 unit breathes slowly; Reduced Motion gets a still ring.
+ if(lowHp&&u.hp===1&&u.alive!==false){
+  if(lowHp.static){c.strokeStyle='#fff3d0';c.lineWidth=1;c.strokeRect(x+3.5,y+26.5,5,6);}
+  else{c.fillStyle=`rgba(255,246,214,${(.12+.5*lowHp.amount).toFixed(3)})`;c.fillRect(x+3,y+26,5,6);}
  }
  // The palette communicates allegiance; a dot still distinguishes spent allies.
  if(spent){rect(26,3,4,4,'#f6e6b1');rect(27,4,2,2,ink);}
