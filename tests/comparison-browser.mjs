@@ -25,6 +25,12 @@ try{
   await page.locator('#menuBtn').click();
   await page.locator('#hitChoices [data-hit="weighty"]').click();
   assert.deepEqual(await state(),line);assert.match(page.url(),/hit=weighty/);
+  // World theme music (#104): follows the style by default; the toggle fixes the map's music.
+  assert.match(await page.locator('#themeMusicToggle').innerText(),/画風に連動/);
+  await page.locator('#themeMusicToggle').click();assert.match(page.url(),/music=fixed/);
+  assert.match(await page.locator('#themeMusicToggle').innerText(),/固定/);
+  await page.locator('#themeMusicToggle').click();assert.doesNotMatch(page.url(),/music=fixed/);
+  assert.equal((await page.evaluate(()=>window.srpgDebug.music())).enabled,false,'switching never turns BGM on');
   await page.locator('#closeModal').click();
   // Every profile plays enemy turns without errors.
   for(const ai of ['line','lure','current']){

@@ -1,4 +1,5 @@
 import {NEW_SCORES} from './music-extra.js?v=0.8.0-library42';
+import {THEME_SCORES} from './music-theme.js?v=theme104';
 // Original map scores. No samples, downloads, quotes or melodies from other games.
 // A score has a composed A/B melody, harmony, bass and countermelody, then a varied reprise.
 const major=[0,2,4,5,7,9,11],minor=[0,2,3,5,7,8,10];
@@ -1316,7 +1317,9 @@ export const BONUS_SCORES=[
  }
 ];
 // Appending score pairs preserves the original No.01–26 catalogue forever.
-export const MUSIC_LIBRARY=[...SCORES,...BONUS_SCORES,...NEW_SCORES];
+export const MUSIC_LIBRARY=[...SCORES,...BONUS_SCORES,...NEW_SCORES,...THEME_SCORES];
+// Issue #104: score index of the first world theme (No.43–46 follow No.42).
+export const THEME_SCORE_START=SCORES.length+BONUS_SCORES.length+NEW_SCORES.length;
 export const trackNumber=(scoreIndex,phase=1)=>scoreIndex*2+(phase===1?1:2);
 export const MAP_TRACK_NUMBERS=Object.freeze([
  {ally:1,hostile:2},  // 01 霧河の渡し
@@ -1360,10 +1363,11 @@ export function buildTrack(mapId,phase=1){
 // Keep the gain envelope continuous: stepping a sounding oscillator's gain creates a click.
 export function scheduleNote(context,destination,event,time,secondsPerBeat){
  const duration=Math.max(.035,event.duration*secondsPerBeat),gain=context.createGain(),filter=context.createBiquadFilter(),osc=context.createOscillator();
- const frequency=440*2**((event.midi-69)/12),isPad=event.voice==='pad',plucked=event.voice==='harp',drum=event.voice==='drum';
- osc.type=['flute','harp','bass','drum'].includes(event.voice)?'sine':'triangle';
+ const frequency=440*2**((event.midi-69)/12),isPad=event.voice==='pad',plucked=event.voice==='harp'||event.voice==='gear',drum=event.voice==='drum';
+ // 'gear' (Issue #104 themes only) is a short, dull square tick: metal, not a buzzer.
+ osc.type=event.voice==='gear'?'square':['flute','harp','bass','drum'].includes(event.voice)?'sine':'triangle';
  osc.frequency.setValueAtTime(drum?95:frequency,time);if(drum)osc.frequency.exponentialRampToValueAtTime(35,time+duration);
- filter.type='lowpass';filter.frequency.value=event.voice==='horn'?1800:isPad?900:plucked?2400:3000;
+ filter.type='lowpass';filter.frequency.value=event.voice==='gear'?1250:event.voice==='horn'?1800:isPad?900:plucked?2400:3000;
  const attack=isPad?.075:plucked?.006:.018,release=isPad?.2:.07,end=time+duration+release;
  gain.gain.setValueAtTime(0,time);gain.gain.linearRampToValueAtTime(event.velocity,time+Math.min(attack,duration/3));
  if(plucked||drum)gain.gain.exponentialRampToValueAtTime(.0001,time+duration);
@@ -1378,7 +1382,7 @@ export function scheduleNote(context,destination,event,time,secondsPerBeat){
 export const MUSIC_TRANSITION={fade:.085,silence:.055};
 export function createMusic(storage){
  if(arguments.length===0)try{storage=globalThis.localStorage;}catch{}
- let enabled=false,volume=.32,context=null,master=null,bus=null,timer=null,track=null,key=null,currentSource=null,requested=null,preview=null,index=0,start=0,scheduled=0,serial=0,starts=0;
+ let themeOverride=null,enabled=false,volume=.32,context=null,master=null,bus=null,timer=null,track=null,key=null,currentSource=null,requested=null,preview=null,index=0,start=0,scheduled=0,serial=0,starts=0;
  const voices=new Set(),retired=new Set();
  try{enabled=storage?.getItem('field-command-music')==='true';const saved=storage?.getItem('field-command-music-volume');if(saved!==null&&saved!==undefined&&Number.isFinite(Number(saved)))volume=Math.max(0,Math.min(1,Number(saved)));}catch{}
  function stop(){
@@ -1406,7 +1410,8 @@ export function createMusic(storage){
   if(globalThis.document?.hidden||context?.state!=='running')return;
   const target=preview||(enabled&&requested?.status==='playing'?requested:null);
   if(!target){if(key)stop();return;}
-  const number=preview?trackNumber(target.mapId,target.phase):assignedTrackNumber(target.mapId,target.phase);
+  // A trial-screen world theme replaces the map's tracks for both phases (Issue #104).
+  const number=preview?trackNumber(target.mapId,target.phase):themeOverride!==null?trackNumber(themeOverride,target.phase):assignedTrackNumber(target.mapId,target.phase);
   if(!Number.isInteger(number)||number<1||number>MUSIC_LIBRARY.length*2)return;
   const next=`${Math.floor((number-1)/2)}:${number%2?'ally':'hostile'}`,source=preview?'preview':'game';
   if(next===key&&currentSource===source)return;
@@ -1424,6 +1429,10 @@ export function createMusic(storage){
    if(!context||context.state==='closed'){context=new Audio();master=context.createGain();master.gain.value=volume*.34;const limiter=context.createDynamicsCompressor();limiter.threshold.value=-18;limiter.knee.value=18;limiter.ratio.value=4;master.connect(limiter);limiter.connect(context.destination);}
    if(context.state==='running')activate();else{const token=serial;context.resume().then(()=>{if(token===serial)activate();}).catch(()=>{});}
   }catch{/* Music never blocks input or phase resolution. */}
+ }
+ function setThemeOverride(scoreIndex=null){
+  themeOverride=Number.isInteger(scoreIndex)&&scoreIndex>=0&&scoreIndex<MUSIC_LIBRARY.length?scoreIndex:null;
+  if(!preview&&enabled&&requested?.status==='playing'){try{activate();}catch{stop();}}return themeOverride;
  }
  function setScene(mapId,phase,status='playing'){
   requested={mapId,phase,status};if(preview)return;if(status!=='playing'){if(key)stop();return;}try{if(enabled)activate();}catch{stop();}
@@ -1443,5 +1452,5 @@ export function createMusic(storage){
  }
  const visibility=()=>{if(globalThis.document?.hidden){stop();if(context?.state==='running')context.suspend().catch(()=>{});}else if((enabled||preview)&&context)unlock();};
  globalThis.document?.addEventListener('visibilitychange',visibility);
- return {unlock,setScene,setEnabled,setVolume,playPreview,stopPreview,get enabled(){return enabled;},get volume(){return volume;},snapshot:()=>({enabled,volume,scene:key,preview:preview?`${preview.mapId}:${preview.phase===1?'ally':'hostile'}`:null,title:track?.title||null,state:context?.state||'locked',scheduled,starts,voices:voices.size}),destroy(){preview=null;stop();globalThis.document?.removeEventListener('visibilitychange',visibility);for(const t of retired)clearTimeout(t);retired.clear();if(context&&context.state!=='closed')context.close().catch(()=>{});}};
+ return {unlock,setScene,setThemeOverride,setEnabled,setVolume,playPreview,stopPreview,get enabled(){return enabled;},get volume(){return volume;},snapshot:()=>({enabled,volume,scene:key,preview:preview?`${preview.mapId}:${preview.phase===1?'ally':'hostile'}`:null,title:track?.title||null,state:context?.state||'locked',scheduled,starts,voices:voices.size}),destroy(){preview=null;stop();globalThis.document?.removeEventListener('visibilitychange',visibility);for(const t of retired)clearTimeout(t);retired.clear();if(context&&context.state!=='closed')context.close().catch(()=>{});}};
 }
