@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Mesh} from '../polygon-mesh.js';
+import {Mesh,MESH_STRIDE} from '../polygon-mesh.js';
 import {terrainMesh,unitMesh,unitPose} from '../polygon-models.js';
-import {projectPoint,groundPoint,cellToScreen,screenToCell,silhouetteCell} from '../polygon-space.js';
+import {projectPoint,groundPoint,cellToScreen,screenToCell,pickProjectedMesh} from '../polygon-space.js';
 import {createGame} from '../engine.js';
 import {unit,MAPS} from '../data.js';
 
@@ -13,11 +13,15 @@ test('camera rays roundtrip ground and elevated points at all tactical zooms',()
  }
  for(const tile of [26,32,60.8])for(const cell of [{x:0,y:0},{x:11,y:39},{x:4,y:12}])assert.deepEqual(screenToCell(cellToScreen(cell,tile),tile),cell);
 });
-test('projected head hits its own ground cell without overlapping the neighbour centre',()=>{
- const u={id:'horse',x:3,y:5,type:'horse',alive:true};
- assert.deepEqual(silhouetteCell(projectPoint({x:3.5,y:1.3,z:5.82}),32,[u]),{x:3,y:5});
- assert.deepEqual(silhouetteCell(cellToScreen({x:3,y:4}),32,[u]),{x:3,y:4});
- assert.deepEqual(silhouetteCell(cellToScreen({x:2,y:5}),32,[u]),{x:2,y:5});
+test('projected mesh picking follows visible figures and leaves empty neighbouring cells free',()=>{
+ const s=createGame(),u=unit({id:'horse',x:3,y:5,type:'horse'},'enemy'),mesh=new Mesh();s.units=[u];
+ unitMesh(mesh,u,'fantasy',unitPose(u,s,{},0,true));const group={unit:u,start:0,end:mesh.length,pickable:true};
+ assert.deepEqual(pickProjectedMesh(cellToScreen(u),32,mesh.data,MESH_STRIDE,[group]),{x:3,y:5});
+ assert.equal(pickProjectedMesh(cellToScreen({x:2,y:5}),32,mesh.data,MESH_STRIDE,[group]),null);
+ let head=null;
+ for(let i=0;i<mesh.length;i+=MESH_STRIDE)if(mesh.data[i+1]>1.25){const p=projectPoint({x:mesh.data[i],y:mesh.data[i+1],z:mesh.data[i+2]});if(pickProjectedMesh(p,32,mesh.data,MESH_STRIDE,[group])){head=p;break;}}
+ assert(head,'actual projected head triangles remain selectable');
+ assert.deepEqual(pickProjectedMesh(head,32,mesh.data,MESH_STRIDE,[group]),{x:3,y:5});
 });
 test('both terrain meshes are finite 3D solids with distinct geometry and real normals',()=>{
  for(const map of [MAPS[0],MAPS[3]]){
@@ -26,7 +30,7 @@ test('both terrain meshes are finite 3D solids with distinct geometry and real n
   for(const m of meshes){
    assert(m.triangles>map.w*map.h*20);assert(m.triangles<150000);
    let high=0,low=0,side=0;
-   for(let i=0;i<m.length;i+=10){for(let j=0;j<10;j++)assert(Number.isFinite(m.data[i+j]));high=Math.max(high,m.data[i+1]);low=Math.min(low,m.data[i+1]);if(Math.abs(m.data[i+4])<.5)side++;}
+   for(let i=0;i<m.length;i+=MESH_STRIDE){for(let j=0;j<MESH_STRIDE;j++)assert(Number.isFinite(m.data[i+j]));high=Math.max(high,m.data[i+1]);low=Math.min(low,m.data[i+1]);if(Math.abs(m.data[i+4])<.5)side++;}
    assert(high>.8&&low<-.2&&side>100,'height, depth and lit side faces exist');
   }
  }

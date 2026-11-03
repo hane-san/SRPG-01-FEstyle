@@ -1,5 +1,5 @@
 // Original meshes for the two playable worlds. No downloaded models/textures.
-import {Mesh,rgba} from './polygon-mesh.js?v=polygon109';
+import {Mesh,rgba,surface} from './polygon-mesh.js?v=polygon109-figure111';
 export const WORLD_PALETTES=Object.freeze({
  industrial:{ground:'#8b968d',road:'#a69b85',water:'#477580',stone:'#697780',dark:'#293e49',metal:'#aabdba',brass:'#c49b58',wood:'#78634f',roof:'#49616b',leaf:'#6a8580',lamp:'#ffcf7d'},
  fantasy:{ground:'#8eaa7d',road:'#c0b193',water:'#669baf',stone:'#a3a69a',dark:'#475a59',metal:'#d2d9ce',brass:'#d1b36a',wood:'#80654c',roof:'#84665e',leaf:'#466e58',lamp:'#e8d8b2'}
@@ -17,7 +17,7 @@ function roof(m,x,y,z,w,h,d,p,industrial){
  for(let i=1;i<4;i++){const yy=y+h*i/4,ww=w*(1-i/4);m.beam([x-ww/2,yy,z-d/2],[x-ww/2,yy,z+d/2],.012,p.wood);m.beam([x+ww/2,yy,z-d/2],[x+ww/2,yy,z+d/2],.012,p.wood);}
 }
 export function terrainMesh(map,theme,mesh=new Mesh()){
- const p=WORLD_PALETTES[theme],industrial=theme==='industrial';mesh.reset();
+ const base=WORLD_PALETTES[theme],p={...base,metal:surface(base.metal,.27,.85),brass:surface(base.brass,.32,.8),water:surface(base.water,.24,.12),dark:surface(base.dark,.72,.25)},industrial=theme==='industrial';mesh.reset();
  for(let z=0;z<map.h;z++)for(let x=0;x<map.w;x++){
   const tile=map.tiles[z][x],n=(x*17+z*31)%11,cx=x+.5,cz=z+.5;
   const ground=tile==='~'?p.water:tile==='='||tile==='+'?p.road:p.ground;
@@ -97,7 +97,7 @@ export function terrainMesh(map,theme,mesh=new Mesh()){
 
 export function unitPose(u,s,view,time=0,reduced=false){
  const a=view.animation,moving=view.motion?.id===u.id?view.motion:null;
- let facing=u.team==='ally'?Math.PI:0,step=0,attack=0,hit=0,heal=false,death=0;
+ let facing=u.team==='ally'?Math.PI:0,step=0,attack=0,brace=0,hit=0,heal=false,death=0;
  if(moving&&a?.kind==='move'){
   const prev=a.path[Math.max(0,(a.segment||1)-1)],next=a.path[a.segment||1];
   if(next&&prev)facing=Math.atan2(next.x-prev.x,next.y-prev.y);
@@ -105,35 +105,48 @@ export function unitPose(u,s,view,time=0,reduced=false){
  }
  if(a?.actor===u.id&&['hit','heal'].includes(a.kind)){
   const target=s.units.find(t=>t.id===a.target);if(target)facing=Math.atan2(target.x-u.x,target.y-u.y);
-  if(a.stage==='windup'){attack=Math.sin((a.progress||0)*Math.PI/2);heal=a.kind==='heal';}
+  if(a.stage==='windup'){
+   const p=a.progress||0;brace=Math.sin(Math.min(1,p/.62)*Math.PI/2);
+   attack=p<.62?-.22*Math.sin(p/.62*Math.PI/2):-.22+1.22*Math.pow((p-.62)/.38,.7);
+  }else if(a.stage==='hitstop'){attack=1;brace=1;}
+  else if(['shatter','reform'].includes(a.stage)&&a.index===1){attack=1-(a.progress||0);brace=attack;}
+  heal=a.kind==='heal';
  }
  if(view.impact?.id===u.id&&view.impact.kind!=='heal')hit=Math.sin(Math.PI*view.impact.progress)*.18;
  if(view.ghost?.unit.id===u.id)death=view.ghost.progress;
  const fire=a?.actor===u.id&&(a.stage==='hitstop'||a.stage==='shatter'&&a.index===1)?(a.stage==='hitstop'?1:1-a.progress):0;
- return {x:moving?.x??u.x,z:moving?.y??u.y,facing,step:reduced?0:step,walking:!!moving&&a?.kind==='move',attack:reduced?0:attack,fire:reduced?0:fire,heal,hit:reduced?0:hit,death:reduced?0:death,
+ return {x:moving?.x??u.x,z:moving?.y??u.y,facing,step:reduced?0:step,walking:!!moving&&a?.kind==='move',attack:reduced?0:attack,brace:reduced?0:brace,fire:reduced?0:fire,heal,hit:reduced?0:hit,death:reduced?0:death,
   breath:reduced||u.acted?0:Math.sin(time*.002+u.id.length)*.012};
 }
 
 export function unitMesh(mesh,u,theme,pose){
- const p=WORLD_PALETTES[theme],industrial=theme==='industrial',ally=u.team==='ally',spent=ally&&u.acted;
- const coat=spent?'#7e8886':ally?(industrial?'#416b85':'#496fb2'):(industrial?'#99564e':'#af4e63');
- const light=spent?'#adb6ad':ally?'#a6c6d7':'#dfb29e',metal=industrial?p.metal:'#d8ded5',skin='#dfc5a5';
- const leather=industrial?'#534d43':'#705341',armour=u.type==='shield',mounted=u.type==='horse',gun=u.type==='shooter';
+ const base=WORLD_PALETTES[theme],p={...base,metal:surface(base.metal,.24,.88),brass:surface(base.brass,.3,.82),dark:surface(base.dark,.58,.42),wood:surface(base.wood,.92,0)},industrial=theme==='industrial',ally=u.team==='ally',spent=ally&&u.acted;
+ const coat=surface(spent?'#7e8886':ally?(industrial?'#416b85':'#496fb2'):(industrial?'#99564e':'#af4e63'),.94,0);
+ const light=surface(spent?'#adb6ad':ally?'#a6c6d7':'#dfb29e',.8,0),metal=industrial?p.metal:surface('#d8ded5',.27,.86),skin=surface('#dfc5a5',.7,0);
+ const leather=surface(industrial?'#534d43':'#705341',.78,0),armour=u.type==='shield',mounted=u.type==='horse',gun=u.type==='shooter';
  const walk=pose.walking?Math.sin(pose.step)*.55:0,heavy=armour?.9:1;
- mesh.push({x:pose.x+.5,y:0,z:pose.z+.82,ry:pose.facing,scale:pose.z<.1&&mounted?.75:1});
- mesh.cylinder(0,.008,0,mounted||gun?.36:.26,.01,rgba('#21353d',.2),12);
- mesh.push({y:-pose.hit*.08,z:-pose.hit*.2,rx:pose.death*1.35-pose.hit*.6,scale:1-pose.death*.55});
- let torso=.66;
+ mesh.push({x:pose.x+.5,y:0,z:pose.z+.9,ry:pose.facing,scale:pose.z<.1?.64:1});
+ mesh.cylinder(0,.006,0,mounted||gun?.39:.33,.012,rgba('#162731',.2),16);
+ mesh.cylinder(0,.025,0,mounted||gun?.35:.295,.045,industrial?p.dark:surface('#777b70',.9),16,(mounted||gun?.35:.295)*.96);
+ mesh.cylinder(0,.05,0,mounted||gun?.34:.286,.012,industrial?p.brass:surface('#b6ac8d',.83),16);
+ mesh.push({y:.052-pose.hit*.06-(pose.brace||0)*.025,z:-pose.hit*.16,rx:pose.death*1.35-pose.hit*.6,ry:pose.attack*.12,scale:1-pose.death*.55});
+ let torso=.73;
  if(mounted){
-  const horse=industrial?'#727b76':'#857567';
-  mesh.ellipsoid(0,.48,-.02,.23,.22,.43,horse,10,5);
-  mesh.push({x:0,y:.55,z:.33,rx:-.4});mesh.bevel(0,.08,.04,.18,.38,.21,horse);mesh.ellipsoid(0,.27,.14,.12,.14,.23,horse,8,4);mesh.pop();
+  const horse=surface(industrial?'#727b76':'#857567',.8,0);
+  mesh.ellipsoid(0,.48,-.02,.23,.22,.43,horse,14,8);
+  mesh.ellipsoid(0,.5,-.27,.25,.23,.21,horse,10,6);mesh.ellipsoid(0,.52,.23,.235,.24,.22,horse,10,6);
+  mesh.push({x:0,y:.55,z:.33,rx:-.4});mesh.ellipsoid(0,.1,.04,.12,.27,.14,horse,10,6);mesh.ellipsoid(0,.29,.15,.1,.14,.23,horse,10,6);
+  mesh.ellipsoid(0,.25,.32,.115,.08,.095,surface('#4c4c44',.9),10,6);
+  for(const side of [-1,1]){mesh.ellipsoid(side*.092,.32,.16,.016,.018,.024,'#17232a',8,4);mesh.cylinder(side*.075,.47,.04,.035,.13,horse,7,0);}
+  mesh.beam([0,.43,-.045],[0,.11,-.075],.028,p.dark);mesh.pop();
   for(const x of [-.15,.15])for(const z of [-.28,.24]){
-   mesh.push({x,y:.42,z,rx:((x>0)===(z>0)?walk:-walk)});mesh.bevel(0,-.18,0,.07,.35,.09,horse,.015);mesh.bevel(0,-.35,.025,.09,.09,.14,leather,.012);mesh.pop();
+   const swing=((x>0)===(z>0)?walk:-walk);
+   mesh.push({x,y:.42,z,rx:swing});mesh.ellipsoid(0,-.085,0,.047,.13,.052,horse,10,6);
+   mesh.push({y:-.2,rx:Math.max(0,-swing)*.8});mesh.ellipsoid(0,-.075,0,.032,.105,.037,horse,10,6);mesh.bevel(0,-.18,.025,.08,.08,.12,p.dark,.012);mesh.pop();mesh.pop();
   }
   mesh.bevel(0,.68,-.04,.32,.08,.26,leather);mesh.bevel(0,.76,-.1,.25,.12,.18,coat);
   mesh.beam([-.11,.84,.03],[-.1,.76,.52],.012,p.brass);mesh.beam([.11,.84,.03],[.1,.76,.52],.012,p.brass);
-  mesh.beam([0,.57,-.42],[0,.3,-.55],.045,p.dark);torso=.96;
+  mesh.beam([0,.57,-.42],[0,.3,-.55],.045,p.dark);torso=1.02;
   // Rider's thighs/boots straddle the saddle; the torso must not float above it.
   for(const side of [-1,1]){
    mesh.bevel(side*.245,.62,-.08,.12,.31,.14,leather,.02);
@@ -146,48 +159,68 @@ export function unitMesh(mesh,u,theme,pose){
   mesh.push({x:0,y:.33,z:.1-pose.fire*.14,rx:pose.fire*.1});
   if(industrial){mesh.push({rx:Math.PI/2});mesh.cylinder(0,.12,0,.09,.6,p.dark,12,.07);mesh.cylinder(0,.43,0,.1,.08,p.brass,12);mesh.pop();mesh.bevel(0,.1,-.1,.26,.19,.21,p.metal);}
   else{mesh.bevel(0,.13,0,.12,.28,.56,p.wood);for(const x of [-.27,.27])mesh.beam([x,.18,.22],[0,.22,-.13],.04,p.wood);mesh.beam([-.27,.18,.22],[.27,.18,.22],.012,p.metal);}
-  mesh.pop();torso=.64;
+  mesh.pop();torso=.71;
  }
+ // The gun crew shares one body frame behind the carriage: neck, belt and
+ // arms must follow the torso instead of floating in front of it.
+ if(gun)mesh.push({z:-.18});
  if(!mounted){
   for(const side of [-1,1]){
-   mesh.push({x:side*.095,y:torso-.31,z:gun?-.19:0,rx:side*walk*heavy});
-   mesh.bevel(0,-.13,0,.13,.29,.14,leather,.02);mesh.bevel(0,-.29,.055,.15,.12,.23,p.dark,.02);mesh.pop();
+   const stride=side*walk*heavy,knee=pose.walking?Math.max(0,-stride)*.8:(pose.brace||0)*.08;
+   mesh.push({x:side*.102,y:torso-.26,z:0,rx:stride-(pose.brace||0)*.04});
+   mesh.ellipsoid(0,-.105,0,.079,.145,.083,coat,10,6);
+   mesh.push({y:-.225,rx:knee});mesh.ellipsoid(0,0,.018,.068,.06,.065,armour?metal:leather,10,6);
+   mesh.ellipsoid(0,-.105,0,.055,.125,.06,leather,10,6);mesh.bevel(0,-.205,.045,.14,.1,.22,p.dark,.022);mesh.pop();mesh.pop();
   }
  }
  torso+=pose.breath;
  // Torso silhouette, cuirass/coat seams, shoulder armour and cloak are distinct.
- mesh.bevel(0,torso,gun?-.18:0,armour?.43:.31,.35,.23,armour?metal:coat,.035);
- mesh.bevel(0,torso-.16,0,.32,.07,.25,leather,.015);mesh.box(0,torso-.16,.139,.065,.065,.02,p.brass);
+ mesh.ellipsoid(0,torso-.04,0,armour?.205:.17,.225,.135,armour?metal:coat,12,7);
+ mesh.bevel(0,torso-.15,0,.28,.1,.23,leather,.025);mesh.box(0,torso-.15,.127,.06,.055,.025,p.brass);
+ if(armour){mesh.beam([0,torso+.13,.145],[0,torso-.1,.145],.016,p.brass);for(const side of [-1,1])mesh.ellipsoid(side*.205,torso+.13,0,.105,.09,.14,metal,10,6);}
  if(industrial){
   mesh.bevel(0,torso+.02,.13,.18,.19,.055,p.dark,.015);
   for(const xx of [-.06,.06])mesh.cylinder(xx,torso+.06,.17,.025,.04,p.brass,6);
   mesh.bevel(0,torso,-.18,.23,.24,.12,p.dark,.02);mesh.cylinder(.1,torso+.11,-.2,.04,.23,p.brass,8);
  }else{
   mesh.box(0,torso,.127,.06,.3,.025,light);
-  mesh.quad([-.17,torso+.14,-.13],[.17,torso+.14,-.13],[.23,torso-.37,-.21-pose.breath],[ -.23,torso-.37,-.21-pose.breath],coat);
+  for(let i=0;i<6;i++){
+   const x0=-.17+i*.34/6,x1=x0+.34/6,z0=-.17-Math.sin(i*Math.PI/3)*.025,z1=-.17-Math.sin((i+1)*Math.PI/3)*.025;
+   mesh.quad([x0,torso+.13,-.12],[x1,torso+.13,-.12],[x1*1.35,torso-.36,z1-pose.breath],[x0*1.35,torso-.36,z0-pose.breath],coat);
+  }
   mesh.beam([-.14,torso+.14,-.14],[-.23,torso-.37,-.22],.012,p.brass);mesh.beam([.14,torso+.14,-.14],[.23,torso-.37,-.22],.012,p.brass);
  }
- const headY=torso+.31;
- mesh.ellipsoid(0,headY,.01,.13,.15,.125,skin,10,5);
+ const headY=torso+.34;
+ mesh.cylinder(0,torso+.21,0,.053,.1,skin,10);
+ mesh.ellipsoid(0,headY,.01,.112,.12,.103,skin,14,8);
+ mesh.ellipsoid(0,headY-.058,.035,.09,.065,.075,skin,10,6);
+ mesh.ellipsoid(0,headY-.005,.116,.021,.034,.035,skin,10,6);
+ for(const side of [-1,1]){
+  mesh.ellipsoid(side*.045,headY+.025,.107,.017,.008,.008,'#222d31',8,4);
+  mesh.beam([side*.025,headY+.045,.108],[side*.069,headY+.047,.101],.007,leather,4);
+  mesh.ellipsoid(side*.11,headY,.006,.019,.032,.02,skin,8,5);
+ }
  if(u.type==='mage'){
   if(industrial){mesh.bevel(0,headY+.08,0,.29,.12,.28,p.dark,.025);mesh.box(0,headY+.01,.13,.23,.055,.035,p.brass);mesh.box(0,headY+.01,.153,.16,.035,.012,p.lamp);}
   else{mesh.cylinder(0,headY+.09,0,.18,.05,coat,10);mesh.cylinder(0,headY+.23,0,.145,.29,coat,10,.025);}
   mesh.cylinder(0,torso-.13,0,.2,.28,coat,8,.15);
  }else if(u.type==='bandit'){
-  mesh.ellipsoid(0,headY+.06,-.025,.155,.14,.14,leather,8,4);mesh.box(0,headY-.02,.13,.23,.09,.035,p.dark);
+  mesh.ellipsoid(0,headY+.055,-.025,.13,.105,.123,leather,10,6);mesh.box(0,headY-.04,.115,.19,.055,.025,p.dark);
  }else{
-  mesh.ellipsoid(0,headY+.07,-.015,.15,.135,.14,industrial?p.dark:metal,10,4);
-  mesh.box(0,headY+.005,.137,.23,.045,.025,p.dark);
-  if(armour){mesh.bevel(0,headY-.06,.14,.22,.15,.06,metal,.015);mesh.box(0,headY,.18,.05,.14,.015,p.brass);}
+  mesh.ellipsoid(0,headY+.068,-.018,.127,.105,.12,industrial?p.dark:metal,12,7);
+  mesh.bevel(0,headY+.045,.1,.235,.035,.09,metal,.012);
+  if(armour){mesh.bevel(0,headY-.055,.128,.19,.12,.045,metal,.015);mesh.box(0,headY+.01,.158,.027,.13,.018,p.brass);}
   if(industrial){for(const x of [-.07,.07])mesh.ellipsoid(x,headY+.01,.15,.04,.04,.035,p.brass,6,3);}
   else mesh.bevel(0,headY+.2,-.025,.06,.2,.17,coat,.018);
  }
  if(u.rank==='advanced')for(const x of [-.14,.14])mesh.ellipsoid(x,torso+.17,0,.11,.075,.15,p.brass,7,3);
  // Arms pivot with the actual shared windup. Shield braces, bow draws, mage raises.
  for(const side of [-1,1]){
-  const arm=pose.attack*(u.type==='bow'?(side>0?-.9:.4):u.type==='mage'?-.8:side>0?-1.45:-.2);
-  mesh.push({x:side*(armour?.24:.2),y:torso+.12,z:gun?-.15:0,rx:arm-pose.hit*.5});
-  mesh.bevel(0,-.11,0,armour?.17:.115,.25,.14,armour?metal:coat,.02);mesh.ellipsoid(0,-.25,.025,.065,.07,.065,skin,7,3);
+  const arm=pose.attack*(u.type==='bow'?(side>0?-.9:.4):u.type==='mage'?-.8:side>0?-1.45:-.2)+(pose.walking?-side*walk*.25:0);
+  mesh.push({x:side*(armour?.24:.2),y:torso+.12,z:0,rx:arm-pose.hit*.5});
+  mesh.ellipsoid(0,-.085,0,armour?.09:.066,.13,.075,armour?metal:coat,10,6);
+  mesh.push({y:-.18,rx:-.13-(pose.brace||0)*.18});
+  mesh.ellipsoid(0,-.075,.025,.059,.115,.059,armour?metal:coat,10,6);mesh.ellipsoid(0,-.18,.05,.053,.058,.049,skin,10,6);
   if(side===1){
    if(u.type==='mage'){
     mesh.beam([.04,-.49,.06],[.04,.2,.06],.025,industrial?p.brass:p.wood);mesh.ellipsoid(.04,.25,.06,.075,.09,.075,pose.heal?'#b4efd2':p.lamp,8,4);
@@ -203,8 +236,8 @@ export function unitMesh(mesh,u,theme,pose){
   }else if(armour){
    mesh.bevel(-.05,-.16,.12,.3,.45,.09,industrial?p.dark:coat,.045);mesh.bevel(-.05,-.16,.175,.25,.38,.04,metal,.03);mesh.box(-.05,-.16,.2,.055,.34,.015,coat);
   }
-  mesh.pop();
+  mesh.pop();mesh.pop();
  }
  if(u.type==='bow')mesh.bevel(-.13,torso+.02,-.2,.13,.39,.11,leather,.02);
- mesh.pop();mesh.pop();
+ if(gun)mesh.pop();mesh.pop();mesh.pop();
 }

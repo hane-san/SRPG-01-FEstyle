@@ -31,6 +31,22 @@ export function createAudio(storage){
    else if(kind==='lock'){burst(.022,.035,2400);note(820,.04,0,'triangle',610,.025);}
    else if(kind==='cancel')note(360,.07,0,'triangle',220);
    else if(kind==='step')note(125,.035,0,'triangle',70);
+   else if(kind==='combat-windup'){
+    // A restrained draw/swish; the weight belongs at contact, after anticipation.
+    const bow=options.type==='bow',gun=options.type==='shooter';
+    burst(bow?.06:gun?.055:.075,bow?.025:gun?.028:.032,bow?2200:gun?800:1700);
+    note(bow?680:gun?180:390,.08,0,'triangle',bow?320:gun?110:160,.022);
+   }
+   else if(kind==='combat-impact'){
+    const type=options.type||'sword',armoured=!!options.armoured,heavy=!!options.heavy;
+    const gun=type==='shooter',bow=type==='bow',mage=type==='mage';
+    // Low body + short woody/metal contact. Keep headroom for the glass chain.
+    burst(gun?.10:armoured?.075:.06,gun?.11:armoured?.085:.078,gun?380:armoured?760:bow?1250:950);
+    note(gun?88:armoured?135:bow?210:160,heavy?.16:.12,0,'triangle',gun?35:55,gun?.09:.07);
+    if(armoured){note(1720,.09,.005,'sine',690,.025);note(2610,.065,.009,'sine',1180,.014);}
+    else if(mage){note(340,.13,0,'sine',130,.04);note(1280,.095,.01,'triangle',550,.02);}
+    else if(!bow){note(type==='spear'||type==='horse'?730:960,.055,.004,'sawtooth',210,.024);}
+   }
    else if(kind==='swing'){
     // Same movement rhythm, different physical weight; damage crystals remain separate.
     const type=options.type||'sword';
@@ -82,7 +98,7 @@ export function createAudio(storage){
      }else{
       // Each jewel has one well-defined transient. Two-point hits get wider,
       // bright glass and a final resonance without suggesting a third crack.
-      burst(double?.045:.029,armoured?(double?.06:.041):(double?.083:.052),armoured?1300:double?2550:2700,delay);
+      burst(double?.045:.029,(armoured?(double?.06:.041):(double?.083:.052))*(options.impact?.85:1),armoured?1300:double?2550:2700,delay);
       note(base+variation,double?.077:.055,delay,'sine',armoured?base*.54:base*.67,double?.064:.044);
       note(base*1.8+variation,double?.041:.033,delay+.004,'triangle',base,double?.028:.016);
       if(double&&i===1)note(1660,.08,delay+.005,'sine',720,armoured?.014:.022);

@@ -1,22 +1,22 @@
-import {openTacticalLab} from './tactical-lab.js?v=trial90-mixed107-polygon109';
-import {polygonTheme,polygonStats,polygonContext,releasePolygon} from './polygon-renderer.js?v=polygon109';
-import {silhouetteCell,screenToCell} from './polygon-space.js?v=polygon109';
-import {AI_PROFILES,HIT_PROFILES,DEFAULT_HIT,lowHpPulse,mixedRole,roleNote} from './trial-profiles.js?v=mixed107';
+import {openTacticalLab} from './tactical-lab.js?v=trial90-mixed107-polygon109-figure111';
+import {polygonTheme,polygonStats,polygonContext,releasePolygon,pickPolygon} from './polygon-renderer.js?v=polygon109-figure111';
+import {screenToCell} from './polygon-space.js?v=polygon109-figure111';
+import {AI_PROFILES,HIT_PROFILES,DEFAULT_HIT,lowHpPulse,mixedRole,roleNote} from './trial-profiles.js?v=mixed107-figure111';
 import {riskCue,hasAnnouncedCannon,combatCue,thumbSide,buildThreatIndex,indexedThreat,warningFocus} from './tactical-ui.js?v=0.8.0-ui55-warnjump-mixed107';
 import {hudSignals,routeIntent} from './ui-hud.js?v=0.8.0-hud50';
-import {openGemDemo} from './gem-demo.js?v=0.8.0-gems28';
+import {openGemDemo} from './gem-demo.js?v=0.8.0-gems28-figure111';
 import {appendChapter,chronicleLines} from './chronicle.js?v=0.8.0-war43';
 import {RELEASE,SKILLS,PROMOTIONS,RULES,CLASS_ROLES} from './config.js?v=0.8.0-p3-26-sortie29-classes68';
 import {MAPS} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
-import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-trial92-mixed107';
-import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96-trial92-art97-crystal101-mixed107-polygon109';
+import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-trial92-mixed107-figure111';
+import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96-trial92-art97-crystal101-mixed107-polygon109-figure111';
 import {bindMapInput,createHoldLock,bindReserveInput} from './ui-input.js?v=trial90';
 import {readSave,writeSave} from './save.js?v=0.8.0-p3-26-save37-war43-classes68';
-import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107';
-import {createAudio} from './audio.js?v=0.8.0-issue17-sortie29-issue24-gems28-flick35-weapon48';
+import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107-figure111';
+import {createAudio} from './audio.js?v=0.8.0-issue17-sortie29-issue24-gems28-flick35-weapon48-figure111';
 import {createMusic,buildTrack,SCORES,BONUS_SCORES,MUSIC_LIBRARY,trackNumber,assignedTrackNumber,trackByNumber,THEME_SCORE_START} from './music.js?v=0.8.0-library42-theme104';
 import {STYLE_THEME} from './music-theme.js?v=theme104';
-import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-ui96-trial92-crystal101-mixed107';
+import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-ui96-trial92-crystal101-mixed107-figure111';
 import {DISPLAY_NAME} from './display-name.js?v=0.8.0-display-2fb0ebb2368b';
 const $=id=>document.getElementById(id),canvas=$('battlefield'),vp=$('mapViewport');
 // The preview is a separate, nonpersistent URL session. Normal saves are never read/written here.
@@ -106,7 +106,7 @@ function polygonFallback(){
  });
 }
 canvas.addEventListener('polygonfailure',polygonFallback);
-function draw(){view.polygonReduced=reduced()||fast;render(canvas,s,view);drawMini();if(view.polygonError&&polygonTheme(view.sampleTheme))polygonFallback();}
+function draw(){view.polygonVisible={x:vp.scrollLeft/view.tile,y:vp.scrollTop/view.tile,w:vp.clientWidth/view.tile,h:vp.clientHeight/view.tile};view.polygonReduced=reduced()||fast;render(canvas,s,view);drawMini();if(view.polygonError&&polygonTheme(view.sampleTheme))polygonFallback();}
 // Issue #101-C: redraw slowly only while an HP1 unit is on the board and the page is visible.
 setInterval(()=>{
  if(document.hidden||$('modal').open)return;
@@ -294,7 +294,7 @@ function undoMove(){
 $('moveUndo').onclick=undoMove;
 function selectUnit(u,open=false){battleCard=null;lastNotice=null;view.sortie=false;view.sortieUnit=null;view.selected=u.id;view.dest={x:u.x,y:u.y};view.cursor={x:u.x,y:u.y};view.keyboard=false;view.action=null;view.target=null;view.menu=false;view.route=[];
  sound.play('select');view.attackError=null;if(open&&u.team==='ally'&&!u.acted)openDraft();else refresh();}
-function mapPoint(clientX,clientY){const r=canvas.getBoundingClientRect(),point={x:clientX-r.left,y:clientY-r.top};return polygonTheme(view.sampleTheme)?silhouetteCell(point,view.tile,E.alive(s)):screenToCell(point,view.tile);}
+function mapPoint(clientX,clientY){const r=canvas.getBoundingClientRect(),point={x:clientX-r.left,y:clientY-r.top};return (polygonTheme(view.sampleTheme)?pickPolygon(canvas,point,view.tile,view.dragging?view.selected:null):null)||screenToCell(point,view.tile);}
 function draftMove(u,p,anchor=null){
  const draft=slideDraft(s,u,p,anchor?.dest||view.dest||u,{preserve:!!anchor,route:anchor?.route});view.invalid=!draft;if(!draft)return false;
  const changed=E.key(draft.dest)!==E.key(view.dest||u)||draft.target!==view.target;
@@ -414,7 +414,7 @@ $('dangerBtn').onclick=()=>{view.danger=!view.danger;refresh();};
 function setZoom(z){const p=center();zoom=Math.max(0,Math.min(2,z));fit();draw();recenter(p);}
 $('zoomIn').onclick=()=>setZoom(zoom+1);$('zoomOut').onclick=()=>setZoom(zoom-1);
 function home(){const friends=E.alive(s,'ally'),a=selected()?.team==='ally'?selected():friends.find(u=>!u.acted)||friends[0],p=a||s.map.camp;if(p){recenter({x:p.x+.5,y:p.y+.5});drawMini();}}
-$('homeBtn').onclick=home;$('forecast').onclick=jumpToWarning;let miniFrame=null;vp.addEventListener('scroll',()=>{if(miniFrame===null)miniFrame=requestAnimationFrame(()=>{miniFrame=null;drawMini();placeOrders();updateWarningJump();});},{passive:true});
+$('homeBtn').onclick=home;$('forecast').onclick=jumpToWarning;let miniFrame=null;vp.addEventListener('scroll',()=>{if(miniFrame===null)miniFrame=requestAnimationFrame(()=>{miniFrame=null;if(polygonTheme(view.sampleTheme))draw();else drawMini();placeOrders();updateWarningJump();});},{passive:true});
 $('forecast').onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();jumpToWarning();}};
 function nextUnit(){const u=nextReady(s,view.selected);if(!u)return;selectUnit(u,true);recenter({x:u.x+.5,y:u.y+.5});draw();vp.focus({preventScroll:true});}
 $('nextUnit').onclick=nextUnit;
@@ -559,7 +559,7 @@ function addTrialControls(root,compare=false){
   directSortie=!directSortie;try{localStorage.setItem('field-command-direct-sortie',String(directSortie));}catch{}
   showMenu();
  },'wide subtle');mode.id='directSortieToggle';mode.setAttribute('aria-pressed',String(directSortie));section.append(mode);
- const lab=button('戦術実験室：攻撃・重装・P3を比べる',()=>openTacticalLab({modal,button,sound,isFast:()=>fast,isReduced:reduced,theme:view.sampleTheme}),'wide');lab.id='openTacticalLab';section.append(lab);
+ const lab=button('戦術実験室：攻撃・重装・P3を比べる',()=>openTacticalLab({modal,button,sound,isFast:()=>fast,isReduced:reduced,theme:view.sampleTheme,hitProfile:()=>trialHit}),'wide');lab.id='openTacticalLab';section.append(lab);
  root.append(section);
 }
 function setTrialParam(key,value){const url=new URL(location.href);if(value===(key==='hit'?DEFAULT_HIT:'current'))url.searchParams.delete(key);else url.searchParams.set(key,value);history.replaceState(null,'',url);}

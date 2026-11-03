@@ -1,8 +1,9 @@
-import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107';
+import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107-figure111';
 import {unit} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
-import {render} from './render.js?v=trial90-lab-mixed107-polygon109';
-import {releasePolygon} from './polygon-renderer.js?v=polygon109';
-import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-mixed107';
+import {render} from './render.js?v=trial90-lab-mixed107-polygon109-figure111';
+import {releasePolygon} from './polygon-renderer.js?v=polygon109-figure111';
+import {DEFAULT_HIT} from './trial-profiles.js?v=figure111';
+import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-mixed107-figure111';
 
 export const LAB_CASES=Object.freeze([
  {id:'normal',label:'軽装の一撃',note:'攻撃2と、射程内の生存者の反撃。'},
@@ -30,7 +31,7 @@ export function createLabScenario(kind){
  return {initial,frames,resolved:state};
 }
 
-export function openTacticalLab({modal,button,sound,isFast,isReduced,theme=null}){
+export function openTacticalLab({modal,button,sound,isFast,isReduced,theme=null,hitProfile=()=>DEFAULT_HIT}){
  modal('<h2>戦術実験室</h2><p>同じHP6で、攻撃・軽減・静止支援を見比べます。下の場面を選ぶと実戦と同じ処理と演出で再生します。</p><canvas id="tacticalLabCanvas" aria-label="独立した戦術比較盤面"></canvas><p id="tacticalLabStatus" role="status" aria-live="polite">場面を選んでください</p><div id="tacticalLabControls" class="trial-grid"></div><p class="hint">戦場へ戻ると元の戦闘を続けられます。本編の部隊・ターン・セーブには影響しません。</p>');
  const canvas=document.getElementById('tacticalLabCanvas'),status=document.getElementById('tacticalLabStatus'),controls=document.getElementById('tacticalLabControls');
  const dialog=canvas.closest('dialog');let busy=false,generation=0;
@@ -47,7 +48,7 @@ export function openTacticalLab({modal,button,sound,isFast,isReduced,theme=null}
   for(const b of controls.children)b.disabled=true;
   status.textContent=spec.note;draw();
   const active=()=>token===generation&&visible();
-  const player=createPlayback({getState:()=>current,setState:state=>{current=state;},view,draw,
+  const player=createPlayback({hitProfile,getState:()=>current,setState:state=>{current=state;},view,draw,
    sound:{play:(...args)=>{if(active())sound.play(...args);}},isFast:()=>!active()||isFast(),isReduced,
    onCombat:(_before,after,event,stage)=>{if(active()&&stage==='impact')status.textContent=spec.note+' '+after.units.map(u=>`${u.name} HP${u.hp}/6`).join(' ／ ');}
   });

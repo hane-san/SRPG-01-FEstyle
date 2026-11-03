@@ -8,12 +8,14 @@ export const AI_PROFILES=Object.freeze({
  mixed:{label:'混成（進軍・迎撃・守備）',note:'敵IDごとに役割を固定。進軍役は接近、迎撃役は感知して追跡、守備役は持ち場を維持。役割一覧で条件を確認できます'}
 });
 export const HIT_PROFILES=Object.freeze({
- crystal:{label:'連鎖破砕（標準）'},
+ impact:{label:'ため→打撃→即破砕（標準）'},
+ crystal:{label:'数字→連鎖破砕'},
  current:{label:'以前'},
  weighty:{label:'重め（B）'}
 });
-// Issue #101: the campaign and the trial screen both start on the crystal sequence.
-export const DEFAULT_HIT='crystal';
+// Issue #111: a short anticipation, then impact and the first jewel crack together.
+// The older number-first sequence remains an explicit comparison profile.
+export const DEFAULT_HIT='impact';
 // Lure trial: an enemy wakes when an ally comes this close to its post.
 export const LURE_WAKE=4,LURE_LEASH=6,LINE_REACH=2,LINE_REACH_RANGED=3,LINE_FOCUS_PENALTY=8;
 export const aiProfile=s=>Object.hasOwn(AI_PROFILES,s?.trial?.ai)?s.trial.ai:'current';
@@ -59,6 +61,13 @@ export function crystalSchedule(plan,schedule,{fast=false,reduced=false,heal=fal
  if(fast||reduced||heal||!plan.count)return {...schedule,crystal:false};
  return {...schedule,crystal:true,hitStopMs:plan.heavy?schedule.hitStopMs:Math.max(schedule.hitStopMs,CRYSTAL_IMPACT_MS),
   firstDelayMs:CRYSTAL_NUMBER_MS,intervalMs:crystalInterval(plan.count),finishMs:CRYSTAL_FINISH_MS};
+}
+export const IMPACT_STOP_MS=26,IMPACT_FINISH_MS=85;
+export const impactInterval=count=>count<=2?110:count<=4?85:65;
+export function impactSchedule(plan,schedule,{fast=false,reduced=false,heal=false}={}){
+ if(fast||reduced||heal||!plan.count)return {...schedule,impact:false,crystal:false};
+ return {...schedule,impact:true,crystal:true,firstDelayMs:0,hitStopMs:plan.heavy?42:IMPACT_STOP_MS,
+  intervalMs:impactInterval(plan.count),finishMs:IMPACT_FINISH_MS};
 }
 // Issue #101-B: after an enemy-phase hit, a short beat to read who lost what.
 // It replaces nothing in the crystal sequence and is zero in Fast and Reduced Motion.

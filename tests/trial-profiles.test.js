@@ -64,7 +64,7 @@ test('hit-feel B adds a short hold and linger to ordinary hits only',()=>{
 // Issue #101: number first, then one gem per beat; more damage is denser, not longer.
 import {crystalSchedule,enemyBeat,lowHpPulse,DEFAULT_HIT,HIT_PROFILES} from '../trial-profiles.js';
 test('crystal: a 2-damage hit settles in about half to seven tenths of a second',()=>{
- assert.equal(DEFAULT_HIT,'crystal');assert.ok(HIT_PROFILES.crystal&&HIT_PROFILES.current&&HIT_PROFILES.weighty);
+ assert.equal(DEFAULT_HIT,'impact','latest owner direction changes the default; legacy crystal remains testable');assert.ok(HIT_PROFILES.crystal&&HIT_PROFILES.current&&HIT_PROFILES.weighty&&HIT_PROFILES.impact);
  const plan=gemPlan(6,4,2,{}),s=crystalSchedule(plan,gemSchedule(plan));
  const total=s.hitStopMs+s.firstDelayMs+s.intervalMs*plan.count+s.finishMs;
  assert.ok(s.crystal&&total>=450&&total<=700,`2 damage: ${total}ms`);

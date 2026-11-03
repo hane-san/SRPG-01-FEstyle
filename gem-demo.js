@@ -1,4 +1,5 @@
 import {gemPlan,gemHP,gemSchedule} from './gem-effects.js?v=0.8.0-gems28';
+import {impactSchedule,DEFAULT_HIT} from './trial-profiles.js?v=figure111';
 
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const scenarios=[
@@ -13,7 +14,7 @@ const scenarios=[
  {label:'2ジュエル回復',start:2,amount:2,heal:true}
 ];
 export function openGemDemo({modal,sound,button}){
- modal('<h2>💎 HPジュエル破砕・試聴</h2><p class="hint">戦闘結果は変えず、1〜5ダメージ・重装の軽減・撃破・回復の音とテンポを試せます。音はゲーム独自の合成音です。</p><div id="gemDemoBoard" class="gem-demo-board"><div id="gemDemoStatus" role="status" aria-live="polite">HP 6 / 6</div><div id="gemDemoPips" class="gem-demo-pips" role="img" aria-label="残りHP6"></div><div id="gemDemoMessage">比べたい演出を選んでください</div></div><div id="gemDemoControls" class="gem-demo-controls"></div><p class="hint">実戦でも同じタイミングで砕けます。4以上はヒットストップの後に高速破砕。重装は防いだ分まで割れません。SE OFFなら無音です。</p>');
+ modal('<h2>💎 HPジュエル破砕・試聴</h2><p class="hint">戦闘結果は変えず、1〜5ダメージ・重装の軽減・撃破・回復の音とテンポを試せます。音はゲーム独自の合成音です。</p><div id="gemDemoBoard" class="gem-demo-board"><div id="gemDemoStatus" role="status" aria-live="polite">HP 6 / 6</div><div id="gemDemoPips" class="gem-demo-pips" role="img" aria-label="残りHP6"></div><div id="gemDemoMessage">比べたい演出を選んでください</div></div><div id="gemDemoControls" class="gem-demo-controls"></div><p class="hint">短くためて、打撃と最初の破砕から続けて砕けます。重装は防いだ分まで割れません。SE OFFなら無音です。</p>');
  const container=document.getElementById('gemDemoBoard'),status=document.getElementById('gemDemoStatus'),pips=document.getElementById('gemDemoPips'),message=document.getElementById('gemDemoMessage');
  const controls=document.getElementById('gemDemoControls');let busy=false;
  const setHP=(hp,{breaking=-1,reforming=-1,ally=false}={})=>{
@@ -30,23 +31,25 @@ export function openGemDemo({modal,sound,button}){
   for(const b of controls.querySelectorAll('button'))b.disabled=true;
   const end=spec.heal?Math.min(6,spec.start+spec.amount):Math.max(0,spec.start-spec.amount);
   const plan=gemPlan(spec.start,end,spec.amount,spec);
-  const timing=gemSchedule(plan);
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const timing=DEFAULT_HIT==='impact'?impactSchedule(plan,gemSchedule(plan,false,reduced),{heal:!!spec.heal,reduced}):gemSchedule(plan,false,reduced);
   try{
    setHP(spec.start);message.textContent=spec.label+'：準備';
    sound.unlock();
-   sound.play(spec.heal?'range':'swing');
+   sound.play(spec.heal?'range':'combat-windup',spec.amount,false,{type:'sword'});
    await wait(spec.heal?75:110);
    if(!container.isConnected)return;
-   if(!spec.heal)sound.play('gem-impact',spec.amount,plan.lethal,plan);
+   if(!spec.heal)sound.play('combat-impact',spec.amount,plan.lethal,{...plan,type:'sword'});
+   if(timing.impact){setHP(gemHP(plan,1),{breaking:plan.start-1,ally:!!spec.ally});sound.play('gem-chain',plan.count,plan.lethal,{...plan,intervalMs:timing.intervalMs,impact:true});}
    if(timing.hitStopMs){message.textContent='ズバーン！ 強打の衝撃';container.classList.add('gem-demo-hitstop');await wait(timing.hitStopMs);container.classList.remove('gem-demo-hitstop');}
    if(!container.isConnected)return;
    await wait(timing.firstDelayMs);
-   sound.play('gem-chain',plan.count,plan.lethal,{...plan,intervalMs:timing.intervalMs});
+   if(!timing.impact)sound.play('gem-chain',plan.count,plan.lethal,{...plan,intervalMs:timing.intervalMs});
    for(let i=1;i<=plan.count;i++){
     if(!container.isConnected)return;
-    setHP(gemHP(plan,i),{breaking:spec.heal?-1:plan.start-i,reforming:spec.heal?plan.start+i-1:-1,ally:!!spec.ally});
+    if(!(timing.impact&&i===1))setHP(gemHP(plan,i),{breaking:spec.heal?-1:plan.start-i,reforming:spec.heal?plan.start+i-1:-1,ally:!!spec.ally});
     message.textContent=spec.heal?'結晶が再生 '+i+' / '+plan.count:'パリン！ '+i+' / '+plan.count;
-    await wait(timing.intervalMs);
+    await wait(timing.intervalMs-(timing.impact&&i===1?timing.hitStopMs:0));
    }
    if(!container.isConnected)return;
    if(plan.lethal){sound.play('gem-finish',plan.count,true,plan);message.textContent=spec.ally?'最後の結晶が砕け、静かに消える':'最後の結晶が砕け、敵を撃破！';}
