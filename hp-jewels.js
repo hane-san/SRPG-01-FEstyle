@@ -6,8 +6,8 @@ export function hpHalves(hp,pendingEnd=hp){
  return Array.from({length:6},(_,index)=>({index,gem:Math.floor(index/2),side:index%2?'right':'left',filled:index<n,pending:index<n&&index>=end}));
 }
 
-export function paintHpJewels(c,{x,y,hp,pendingEnd=hp,size=7,gap=1,ally=false,lowHp=null}){
- const halves=hpHalves(hp,pendingEnd),height=size;
+export function paintHpJewels(c,{x,y,hp,pendingEnd=hp,size=7,height=size,gap=1,ally=false,lowHp=null}){
+ const halves=hpHalves(hp,pendingEnd);
  c.save();
  for(let gem=0;gem<3;gem++){
   const left=x+gem*(size+gap),mid=left+size/2,cy=y+height/2;

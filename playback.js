@@ -148,7 +148,7 @@ export function createPlayback({hitProfile=()=>'current',getState,setState,view,
       });
      }
      sound.play('gem-finish',plan.count,true,{ally:plan.ally,heavy:plan.heavy,boss:bossLethal});
-     view.ghost={unit:{...target,hp:0},alpha:1,shatter:true,progress:0,boss:bossLethal,stage:'burst',burstOnly:!!speed.halves};
+     view.ghost={unit:{...target,hp:0},alpha:1,shatter:!isFast()&&!isReduced(),progress:0,boss:bossLethal,stage:'burst',burstOnly:!!speed.halves};
      await tween(document.hidden?0:speed.halves?speed.defeatBurstMs:speed.finishMs+48,p=>{
       view.animation={...event,stage:'collapse',progress:p};
       view.ghost.progress=p;view.ghost.alpha=1-p;

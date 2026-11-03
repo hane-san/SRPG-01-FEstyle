@@ -286,7 +286,7 @@ function drawLandingDust(c,step){
 // Pixel-sized, deterministic diamond chips: one burst per actual HP point.
 function drawGemFragments(c,u,frame){
  if(!u||frame.progress>=1)return;
- const x=u.x*32+4+Math.floor(frame.index/2)*9+(frame.index%2?4.5:1.5),y=u.y*32+28.5,p=frame.progress;
+ const x=u.x*32+3+Math.floor(frame.index/2)*9+(frame.index%2?5.25:1.75),y=u.y*32+29,p=frame.progress;
  const colors=frame.heal?['#e6fff3','#8cd8bf','#baffdf']:frame.armoured?['#f3d9a0','#c3b4c0','#b3a1a0']:u.team==='ally'?['#f4ecff','#d9cbf0','#f5d99e']:['#fff1d6','#ffd0ac','#f7c58d'];
  c.save();c.globalAlpha=Math.max(0,1-p);c.lineWidth=.75;
  const double=!frame.heal&&frame.count===2;
@@ -430,8 +430,9 @@ function drawUnit(c,u,theme=null,lowHp=null,polygon=false,hideHp=false){const x=
  // Persistent high-contrast class badge remains readable for spent units.
  rect(0,0,10,11,'#172f35e6');c.font='bold 8px sans-serif';c.textAlign='center';c.fillStyle='#fff3cf';c.fillText(u.glyph,x+5,y+8);
  if(!hideHp){
-  rect(2,24,28,8,'#15202a');
-  paintHpJewels(c,{x:x+4,y:y+25,hp:u.hp,size:6,gap:3,ally:blue,lowHp:u.alive!==false?lowHp:null});
+  // Preserve the old y26–32 HP footprint: y21–25 belongs to P3 target hints.
+  rect(2,26,28,6,'#15202a');
+  paintHpJewels(c,{x:x+3,y:y+26.5,hp:u.hp,size:7,height:5,gap:2,ally:blue,lowHp:u.alive!==false?lowHp:null});
  }
  // The palette communicates allegiance; a dot still distinguishes spent allies.
  if(spent){rect(26,3,4,4,'#f6e6b1');rect(27,4,2,2,ink);}
