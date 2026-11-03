@@ -30,6 +30,12 @@ jobs:
           node --input-type=module -e 'for(let i=0;i<30;i++){try{const r=await fetch("http://localhost:4173");if(r.ok)process.exit(0);}catch{}await new Promise(r=>setTimeout(r,200));}process.exit(1);'
       - run: npm run test:browser
       - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: half-hp-motion-preview
+          path: test-results/half113-*.png
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: browser-failure-evidence

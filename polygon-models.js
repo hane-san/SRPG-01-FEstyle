@@ -109,14 +109,17 @@ export function unitPose(u,s,view,time=0,reduced=false){
    const p=a.progress||0;brace=Math.sin(Math.min(1,p/.62)*Math.PI/2);
    attack=p<.62?-.22*Math.sin(p/.62*Math.PI/2):-.22+1.22*Math.pow((p-.62)/.38,.7);
   }else if(a.stage==='hitstop'){attack=1;brace=1;}
-  else if(['shatter','reform'].includes(a.stage)&&a.index===1){attack=1-(a.progress||0);brace=attack;}
+  else if(a.stage==='damage'){attack=1-.25*(a.progress||0);brace=attack;}
+  else if(['shatter','reform'].includes(a.stage)&&a.index===1){attack=(view.combatHp?.75:1)*(1-(a.progress||0));brace=attack;}
   heal=a.kind==='heal';
  }
  if(view.impact?.id===u.id&&view.impact.kind!=='heal')hit=Math.sin(Math.PI*view.impact.progress)*.18;
- if(view.ghost?.unit.id===u.id)death=view.ghost.progress;
- const fire=a?.actor===u.id&&(a.stage==='hitstop'||a.stage==='shatter'&&a.index===1)?(a.stage==='hitstop'?1:1-a.progress):0;
+ const charging=view.ghost?.unit.id===u.id&&view.ghost.stage==='charge';
+ if(view.ghost?.unit.id===u.id&&!charging)death=view.ghost.progress;
+ const fire=a?.actor===u.id&&(['hitstop','damage'].includes(a.stage)||a.stage==='shatter'&&a.index===1)?(a.stage==='hitstop'?1:1-a.progress):0;
  return {x:moving?.x??u.x,z:moving?.y??u.y,facing,step:reduced?0:step,walking:!!moving&&a?.kind==='move',attack:reduced?0:attack,brace:reduced?0:brace,fire:reduced?0:fire,heal,hit:reduced?0:hit,death:reduced?0:death,
-  breath:reduced||u.acted?0:Math.sin(time*.002+u.id.length)*.012};
+  charge:reduced||!charging?0:view.ghost.progress,
+  breath:reduced||u.acted||charging?0:Math.sin(time*.002+u.id.length)*.012};
 }
 
 export function unitMesh(mesh,u,theme,pose){
@@ -129,7 +132,7 @@ export function unitMesh(mesh,u,theme,pose){
  mesh.cylinder(0,.006,0,mounted||gun?.39:.33,.012,rgba('#162731',.2),16);
  mesh.cylinder(0,.025,0,mounted||gun?.35:.295,.045,industrial?p.dark:surface('#777b70',.9),16,(mounted||gun?.35:.295)*.96);
  mesh.cylinder(0,.05,0,mounted||gun?.34:.286,.012,industrial?p.brass:surface('#b6ac8d',.83),16);
- mesh.push({y:.052-pose.hit*.06-(pose.brace||0)*.025,z:-pose.hit*.16,rx:pose.death*1.35-pose.hit*.6,ry:pose.attack*.12,scale:1-pose.death*.55});
+ mesh.push({y:.052-pose.hit*.06-(pose.brace||0)*.025,z:-pose.hit*.16,rx:pose.death*1.35-pose.hit*.6,ry:pose.attack*.12,scale:1-pose.death*.55-(pose.charge||0)*.09});
  let torso=.73;
  if(mounted){
   const horse=surface(industrial?'#727b76':'#857567',.8,0);

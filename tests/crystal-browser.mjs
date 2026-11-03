@@ -1,5 +1,5 @@
 // Issue #101: the HP1 gem breathes (or holds a still ring under Reduced Motion) only while
-// an HP1 unit is on the board. Issue #111 starts number + first crack together.
+// an HP1 unit is on the board. Issue #113 shows pending halves before the first crack.
 import assert from 'node:assert/strict';
 import * as E from '../engine.js';
 import {unit} from '../data.js';
@@ -16,15 +16,17 @@ try{
   assert.equal(low.static,motion==='reduce','Reduced Motion uses a still ring');
   await t.reset(board(2));await page.waitForTimeout(400);
   assert.equal((await t.draft()).lowHp??null,null,'no HP1 unit, no pulse');
-  // Latest direction: anticipation, then number and first crack on one frame.
+  // Latest direction: anticipation, contact/number/pending, THEN the first crack.
   await t.select('a');
-  const seen=page.evaluate(()=>new Promise(resolve=>{let numberAt=null,gemsAt=null,anticipation=false;const tick=()=>{const v=window.srpgDebug.draft(),now=performance.now();
+  const seen=page.evaluate(()=>new Promise(resolve=>{let numberAt=null,gemsAt=null,crackAt=null,pending=false,pair=false,anticipation=false;const tick=()=>{const v=window.srpgDebug.draft(),now=performance.now();
    if(v.animation?.stage==='windup'&&v.animation.progress<.62)anticipation=true;
-   if(v.effect?.crystal&&numberAt===null)numberAt=now;if(v.jewel?.zoom&&gemsAt===null)gemsAt=now;
-   if(numberAt!==null&&gemsAt!==null||now>start+4000)resolve({numberAt,gemsAt,anticipation});else requestAnimationFrame(tick);};const start=performance.now();tick();}));
+   if(v.effect?.crystal&&numberAt===null)numberAt=now;
+   if(v.jewel?.zoom&&gemsAt===null){gemsAt=now;pending=v.jewel.hp===6&&v.jewel.pendingEnd===4;pair=v.combatHp?.units.length===2;}
+   if(v.jewel?.zoom&&v.jewel.index>=0&&crackAt===null)crackAt=now;
+   if(crackAt!==null||now>start+4000)resolve({numberAt,gemsAt,crackAt,pending,pair,anticipation});else requestAnimationFrame(tick);};const start=performance.now();tick();}));
   const begin=Date.now();await t.slide({x:5,y:13},{x:5,y:12});await t.settled();const elapsed=Date.now()-begin;
   const order=await seen;
-  if(motion==='no-preference'){assert(order.anticipation);assert.notEqual(order.numberAt,null);assert.equal(order.numberAt,order.gemsAt,'contact shows damage and first crack on the same frame');assert.ok(elapsed>=450&&elapsed<=3500,`attack took ${elapsed}ms`);}
+  if(motion==='no-preference'){assert(order.anticipation);assert.notEqual(order.numberAt,null);assert.equal(order.numberAt,order.gemsAt,'contact shows damage and pending halves on the same frame');assert(order.pending&&order.pair);assert(order.crackAt-order.numberAt>=85,'pending damage is readable before a half breaks');assert.ok(elapsed>=450&&elapsed<=3500,`attack took ${elapsed}ms`);}
   else assert.equal(order.gemsAt,null,'Reduced Motion keeps the quiet sequence');
   assert.equal((await t.state()).units.find(u=>u.id==='e').hp,4,'damage is the engine result');
   assert.deepEqual(t.errors,[]);results.push({motion,pulse:true,order,elapsed});

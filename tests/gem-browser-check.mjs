@@ -9,11 +9,12 @@ try{
  await page.locator('#menuBtn').click();
  await page.getByRole('button',{name:/宝石の破砕音を試す/}).click();
  assert(await page.locator('#gemDemoBoard').isVisible());
- for(const [label,hp] of [['1ダメージ',5],['2ダメージ',4],['3ダメージ',3],['4ダメージ・強打',2],['5ダメージ・強打',1],['重装：攻撃3→被害2',4],['敵を撃破（HP2）',0],['味方が戦死（HP2）',0],['2ジュエル回復',4]]){
+ for(const [label,hp] of [['1ダメージ',5],['2ダメージ',4],['3ダメージ',3],['奇数HP：5→3',3],['4ダメージ・強打',2],['5ダメージ・強打',1],['重装：攻撃3→被害2',4],['敵を撃破（HP2）',0],['味方が戦死（HP2）',0],['2ジュエル回復',4]]){
   await page.getByRole('button',{name:label,exact:true}).click();
   await page.waitForFunction(h=>document.querySelector('#gemDemoBoard')?.dataset.hp===String(h)&&Array.from(document.querySelectorAll('#gemDemoControls button')).every(b=>!b.disabled),hp);
-  assert.equal(await page.locator('.gem-demo-jewel.intact').count(),hp,label);
-  assert.equal(await page.locator('.gem-demo-jewel.gone').count(),6-hp,label);
+  assert.equal(await page.locator('.gem-demo-jewel').count(),3,label);
+  assert.equal(await page.locator('.gem-demo-half.intact').count(),hp,label);
+  assert.equal(await page.locator('.gem-demo-half.gone').count(),6-hp,label);
   results.push({demo:label,hp});
  }
  await page.locator('#closeModal').click();

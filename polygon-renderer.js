@@ -1,5 +1,5 @@
 import {Mesh,MESH_BYTES,MESH_STRIDE} from './polygon-mesh.js?v=polygon109-figure111';
-import {terrainMesh,unitMesh,unitPose} from './polygon-models.js?v=polygon109-figure111';
+import {terrainMesh,unitMesh,unitPose} from './polygon-models.js?v=polygon109-figure111-half113';
 import {CAMERA,pickProjectedMesh} from './polygon-space.js?v=polygon109-figure111';
 const scenes=new WeakMap(),failures=new WeakMap();
 export const polygonTheme=theme=>theme==='industrial'||theme==='fantasy';
@@ -99,7 +99,7 @@ export function polygonFrame(canvas,state,view){
   const reduced=!!view.polygonReduced,time=reduced?0:performance.now(),mesh=s.dynamic.reset();
   const units=state.units.filter(u=>u.alive&&u.deployed!==false);
   if(view.sortieUnit)units.push(view.sortieUnit);
-  if(view.ghost?.unit&&!units.some(u=>u.id===view.ghost.unit.id))units.push(view.ghost.unit);
+  if(view.ghost?.unit&&!view.ghost.burstOnly&&!units.some(u=>u.id===view.ghost.unit.id))units.push(view.ghost.unit);
   const selected=units.find(u=>u.id===view.selected);
   if(selected&&view.dest&&(selected.x!==view.dest.x||selected.y!==view.dest.y))units.push({...selected,...view.dest,id:'preview-'+selected.id,preview:true});
   s.pickUnits=[];

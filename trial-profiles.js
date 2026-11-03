@@ -8,14 +8,15 @@ export const AI_PROFILES=Object.freeze({
  mixed:{label:'混成（進軍・迎撃・守備）',note:'敵IDごとに役割を固定。進軍役は接近、迎撃役は感知して追跡、守備役は持ち場を維持。役割一覧で条件を確認できます'}
 });
 export const HIT_PROFILES=Object.freeze({
- impact:{label:'ため→打撃→即破砕（標準）'},
+ halves:{label:'半分HP・薄色→破砕（標準）'},
+ impact:{label:'ため→打撃→即破砕'},
  crystal:{label:'数字→連鎖破砕'},
  current:{label:'以前'},
  weighty:{label:'重め（B）'}
 });
 // Issue #111: a short anticipation, then impact and the first jewel crack together.
 // The older number-first sequence remains an explicit comparison profile.
-export const DEFAULT_HIT='impact';
+export const DEFAULT_HIT='halves';
 // Lure trial: an enemy wakes when an ally comes this close to its post.
 export const LURE_WAKE=4,LURE_LEASH=6,LINE_REACH=2,LINE_REACH_RANGED=3,LINE_FOCUS_PENALTY=8;
 export const aiProfile=s=>Object.hasOwn(AI_PROFILES,s?.trial?.ai)?s.trial.ai:'current';
@@ -68,6 +69,13 @@ export function impactSchedule(plan,schedule,{fast=false,reduced=false,heal=fals
  if(fast||reduced||heal||!plan.count)return {...schedule,impact:false,crystal:false};
  return {...schedule,impact:true,crystal:true,firstDelayMs:0,hitStopMs:plan.heavy?42:IMPACT_STOP_MS,
   intervalMs:impactInterval(plan.count),finishMs:IMPACT_FINISH_MS};
+}
+// #113: contact identifies ALL pending half-points before any one of them breaks.
+// The hold contains hit-stop. Defeat replaces the normal linger and P2 beat.
+export function halfSchedule(plan,schedule,{fast=false,reduced=false,heal=false}={}){
+ if(fast||reduced||heal||!plan.count)return {...schedule,halves:false,crystal:false};
+ return {...schedule,halves:true,crystal:true,impact:false,hitStopMs:0,firstDelayMs:120,
+  intervalMs:plan.count<=2?130:plan.count<=4?100:75,finishMs:170,defeatHoldMs:150,defeatBurstMs:250};
 }
 // Issue #101-B: after an enemy-phase hit, a short beat to read who lost what.
 // It replaces nothing in the crystal sequence and is zero in Fast and Reduced Motion.
