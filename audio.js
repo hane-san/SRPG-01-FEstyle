@@ -105,6 +105,10 @@ export function createAudio(storage){
      }
     }
    }
+   else if(kind==='gem-charge'){
+    // A short gathering resonance, distinct from both counted cracks and burst.
+    note(options.ally?180:220,.14,0,'sine',options.ally?320:510,.025);
+   }
    else if(kind==='gem-finish'){
     if(options.ally){
      // An ally's final crystal trails down and falls quiet.

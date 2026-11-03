@@ -1,9 +1,9 @@
-import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107-figure111';
+import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107-figure111-half113';
 import {unit} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
-import {render} from './render.js?v=trial90-lab-mixed107-polygon109-figure111';
-import {releasePolygon} from './polygon-renderer.js?v=polygon109-figure111';
-import {DEFAULT_HIT} from './trial-profiles.js?v=figure111';
-import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-mixed107-figure111';
+import {render} from './render.js?v=trial90-lab-mixed107-polygon109-figure111-half113';
+import {releasePolygon} from './polygon-renderer.js?v=polygon109-figure111-half113';
+import {DEFAULT_HIT} from './trial-profiles.js?v=figure111-half113';
+import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-mixed107-figure111-half113';
 
 export const LAB_CASES=Object.freeze([
  {id:'normal',label:'軽装の一撃',note:'攻撃2と、射程内の生存者の反撃。'},
