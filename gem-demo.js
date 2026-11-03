@@ -20,15 +20,17 @@ export function openGemDemo({modal,sound,button}){
  const container=document.getElementById('gemDemoBoard'),status=document.getElementById('gemDemoStatus'),pips=document.getElementById('gemDemoPips'),message=document.getElementById('gemDemoMessage'),controls=document.getElementById('gemDemoControls');
  const dialog=container.closest('dialog');let busy=false;
  const active=()=>container.isConnected&&dialog.open;
+ // Keep each half element alive while its CSS fracture/reform animation runs.
+ const elements=Array.from({length:3},()=>{
+  const gem=document.createElement('span');gem.className='gem-demo-jewel';gem.setAttribute('aria-hidden','true');
+  const pair=[document.createElement('span'),document.createElement('span')];gem.append(...pair);pips.append(gem);return pair;
+ }).flat();
  const setHP=(hp,{pendingEnd=hp,index=-1,heal=false,ally=false}={})=>{
   const halves=hpHalves(hp,pendingEnd);
-  pips.replaceChildren(...Array.from({length:3},(_,i)=>{
-   const gem=document.createElement('span');gem.className='gem-demo-jewel';gem.setAttribute('aria-hidden','true');
-   for(const half of halves.slice(i*2,i*2+2)){
-    const span=document.createElement('span');span.className=`gem-demo-half ${half.side} ${half.filled?'intact':'gone'}${half.pending?' pending':''}${half.index===index?(heal?' reforming':' breaking'):''}${ally?' ally':''}`;gem.append(span);
-   }
-   return gem;
-  }));
+  for(const half of halves){
+   const span=elements[half.index],classes=`gem-demo-half ${half.side} ${half.filled?'intact':'gone'}${half.pending?' pending':''}${half.index===index?(heal?' reforming':' breaking'):''}${ally?' ally':''}`;
+   if(span.className!==classes)span.className=classes;
+  }
   container.dataset.hp=String(hp);status.textContent='HP '+hp+' / 6';pips.setAttribute('aria-label','残りHP'+hp+'、宝石3個・半分でHP1');
  };
  setHP(6);

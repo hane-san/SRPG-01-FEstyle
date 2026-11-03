@@ -22,7 +22,7 @@ export function createPlayback({hitProfile=()=>'current',getState,setState,view,
  async function play(frames){
   try{
   let lastActor=null;
-  for(const {state,event} of frames){
+  for(const [frameIndex,{state,event}] of frames.entries()){
    const before=getState(),actor=before.units.find(u=>u.id===event.actor),target=before.units.find(u=>u.id===event.target);
    view.active=event.actor;view.animation={...event,stage:'start',progress:0};
    if(event.actor!==lastActor&&!event.counter){
@@ -163,7 +163,11 @@ export function createPlayback({hitProfile=()=>'current',getState,setState,view,
     if(beat)await animate(beat);
 
    }
-   clear();draw();await tween(duration(25,0,20),()=>{});
+   // A legal counter is the same confrontation: keep its paired HP enlarged
+   // through the handoff, instead of flashing the tiny bars for one frame.
+   const pair=view.combatHp,next=frames[frameIndex+1]?.event;
+   const continuing=pair&&next?.kind==='hit'&&[next.actor,next.target].every(id=>pair.units.some(u=>u.id===id));
+   clear();if(continuing)view.combatHp=pair;draw();await tween(duration(25,0,20),()=>{});
   }
   clear();draw();
   }finally{clear();}

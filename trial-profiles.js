@@ -14,8 +14,8 @@ export const HIT_PROFILES=Object.freeze({
  current:{label:'以前'},
  weighty:{label:'重め（B）'}
 });
-// Issue #111: a short anticipation, then impact and the first jewel crack together.
-// The older number-first sequence remains an explicit comparison profile.
+// Issue #113 supersedes contact-first: pending half-points, then fracture.
+// The #111 contact-first and #101 number-first profiles remain comparisons.
 export const DEFAULT_HIT='halves';
 // Lure trial: an enemy wakes when an ally comes this close to its post.
 export const LURE_WAKE=4,LURE_LEASH=6,LINE_REACH=2,LINE_REACH_RANGED=3,LINE_FOCUS_PENALTY=8;
