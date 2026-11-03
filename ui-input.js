@@ -62,17 +62,25 @@ export function bindMapInput(viewport,onTap,begin=()=>({pan:true})){
  return {reset};
 }
 
-/** A destination is armed only after it remains the current legal tile for delay ms.
+/** Arm after the pointer rests on a legal tile for delay ms (6px hand tremor allowed).
  * Changing tile or cancelling invalidates the timer (including late callbacks). */
-export function createHoldLock(delay=200,onArm=()=>{}){
- let timer=null,cell=null,armed=false;
- const reset=()=>{if(timer!==null)clearTimeout(timer);timer=null;cell=null;armed=false;};
- const enter=next=>{
-  if(next===cell)return;
-  reset();if(next===null)return;cell=next;
-  timer=setTimeout(()=>{timer=null;if(cell!==next)return;armed=true;onArm(next);},delay);
+export function createHoldLock(delay=200,onArm=()=>{},{slop=6}={}){
+ let timer=null,cell=null,armed=false,origin=null,generation=0;
+ const stop=()=>{generation++;if(timer!==null)clearTimeout(timer);timer=null;};
+ const schedule=()=>{
+  stop();const token=generation,next=cell;
+  timer=setTimeout(()=>{if(token!==generation||cell!==next)return;timer=null;armed=true;onArm(next);},delay);
  };
- return {enter,reset,get armed(){return armed;},get cell(){return cell;}};
+ const reset=()=>{stop();cell=null;armed=false;origin=null;};
+ const move=(x,y)=>{
+  if(armed||cell===null||!origin)return;
+  if(Math.hypot(x-origin.x,y-origin.y)>slop){origin={x,y};schedule();}
+ };
+ const enter=(next,point=null)=>{
+  if(next===cell){if(point)move(point.x,point.y);return;}
+  reset();if(next===null)return;cell=next;origin=point?{...point}:null;schedule();
+ };
+ return {enter,move,reset,get armed(){return armed;},get cell(){return cell;}};
 }
 
 // Start on a reserve button, continue on the battlefield with the same finger.

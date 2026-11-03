@@ -10,7 +10,7 @@ import {RELEASE,SKILLS,PROMOTIONS,RULES,CLASS_ROLES} from './config.js?v=0.8.0-p
 import {MAPS} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-trial92-mixed107-figure111-half113';
 import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96-trial92-art97-crystal101-mixed107-polygon109-figure111-half113';
-import {bindMapInput,createHoldLock,bindReserveInput} from './ui-input.js?v=trial90';
+import {bindMapInput,createHoldLock,bindReserveInput} from './ui-input.js?v=trial90-hold115';
 import {readSave,writeSave} from './save.js?v=0.8.0-p3-26-save37-war43-classes68';
 import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107-figure111-half113';
 import {createAudio} from './audio.js?v=0.8.0-issue17-sortie29-issue24-gems28-flick35-weapon48-figure111-half113';
@@ -175,8 +175,8 @@ function placeOrders(){
   const hint=$('commandHint');hint.dataset.intent=routeIntent(view);hint.replaceChildren();
   const route=document.createElement('strong');route.className='route-readout';route.textContent=`移動先 (${dest.x+1}, ${dest.y+1}) · コスト ${summary.cost??'—'}/${summary.budget} · ${summary.weather}`;
   const detail=document.createElement('span');detail.className='route-intent';
-  detail.textContent=view.attackError||(target?(()=>{const f=battleForecast(s,u,target,dest);return `${target.name} · 自HP ${u.hp}→${f.allyAfter} ／ 敵HP ${target.hp}→${f.enemyAfter} · 反撃${f.counter} · 敵の上で離して攻撃`;})():view.moveArmed?'移動先を固定しました · 離すと移動、敵へ滑らせると攻撃':`通常攻撃 ${summary.targets}隊 · 金の目印が対象`);
-  const help=document.createElement('span');help.className='route-help';help.textContent=view.target&&view.dragging?'敵の上で離すと攻撃確定':view.moveArmed?'カチャッ · 離すと移動確定':view.destinationPress&&!view.target?'敵へスライド。選ばず離すと取消':view.dragging?'敵まで滑らせて離すと直接攻撃／移動だけは0.2秒保持':'部隊からスライド（静止待機は命令欄から）';
+  detail.textContent=view.attackError||(target?(()=>{const f=battleForecast(s,u,target,dest);return `${target.name} · 自HP ${u.hp}→${f.allyAfter} ／ 敵HP ${target.hp}→${f.enemyAfter} · 反撃${f.counter} · 敵の上で離して攻撃`;})():view.moveArmed?'固定しました · 空きマスで止め直して修正できます':`通常攻撃 ${summary.targets}隊 · 金の目印が対象`);
+  const help=document.createElement('span');help.className='route-help';help.textContent=view.target&&view.dragging?'敵の上で離すと攻撃確定':view.moveArmed?'カチャッ · 離すと移動／敵へ滑らせると攻撃':view.destinationPress&&!view.target?'敵へスライド。選ばず離すと取消':view.dragging?'敵まで滑らせて離すと直接攻撃／移動だけは0.2秒保持':'部隊からスライド（静止待機は命令欄から）';
   const alert=document.createElement('span');alert.className='route-risk';
   const risk=riskCue(focusedRisk(u,dest),u.hp,{cannon:hasAnnouncedCannon(s.warnings,dest)});
   alert.dataset.level=risk.level;alert.textContent=risk.text;
@@ -295,10 +295,10 @@ $('moveUndo').onclick=undoMove;
 function selectUnit(u,open=false){battleCard=null;lastNotice=null;view.sortie=false;view.sortieUnit=null;view.selected=u.id;view.dest={x:u.x,y:u.y};view.cursor={x:u.x,y:u.y};view.keyboard=false;view.action=null;view.target=null;view.menu=false;view.route=[];
  sound.play('select');view.attackError=null;if(open&&u.team==='ally'&&!u.acted)openDraft();else refresh();}
 function mapPoint(clientX,clientY){const r=canvas.getBoundingClientRect(),point={x:clientX-r.left,y:clientY-r.top};return (polygonTheme(view.sampleTheme)?pickPolygon(canvas,point,view.tile,view.dragging?view.selected:null):null)||screenToCell(point,view.tile);}
-function draftMove(u,p,anchor=null){
+function draftMove(u,p,anchor=null,paint=true){
  const draft=slideDraft(s,u,p,anchor?.dest||view.dest||u,{preserve:!!anchor,route:anchor?.route});view.invalid=!draft;if(!draft)return false;
  const changed=E.key(draft.dest)!==E.key(view.dest||u)||draft.target!==view.target;
- Object.assign(view,draft,{cursor:{...p},action:null});if(changed)sound.play('cursor');placeOrders();return true;
+ Object.assign(view,draft,{cursor:{...p},action:null});if(changed)sound.play('cursor');if(paint)placeOrders();return true;
 }
 function mapTap(clientX,clientY){
  if(locked||s.status!=='playing'||$('modal').open)return;
@@ -325,28 +325,43 @@ function beginMapGesture(clientX,clientY){
  else if(!ready||(!destinationPress&&pressed?.team!=='enemy'&&!sortieOrigin&&!anchor))return {pan:true,tap:()=>{if(ready)cancelDraft();else mapTap(clientX,clientY);}};
  if(destinationPress&&!anchor){draftMove(u,p);anchor={dest:{...view.dest},route:[...view.route]};}
  view.dragging=true;view.destinationPress=destinationPress;view.menu=false;view.moveArmed=false;refresh();vp.focus({preventScroll:true});
- let lastCell=null,lockAnchor=false,stayArmed=false;
+ let lastCell=null,lockAnchor=false,stayArmed=false,routeFrame=null,correctionPoint=null;
+ const stopPaint=()=>{if(routeFrame!==null)cancelAnimationFrame(routeFrame);routeFrame=null;};
+ const paintRoute=()=>{if(routeFrame===null)routeFrame=requestAnimationFrame(()=>{routeFrame=null;placeOrders();draw();});};
  const stayTimer=unitOrigin?setTimeout(()=>{
   if(!view.dragging||view.invalid||(lastCell&&lastCell!==E.key(u)))return;
-  stayArmed=true;view.moveArmed=true;sound.play('lock');placeOrders();draw();
+  stayArmed=true;view.moveArmed=true;sound.play('lock');paintRoute();
  },200):null;
  const dropStay=()=>{clearTimeout(stayTimer);if(stayArmed){stayArmed=false;view.moveArmed=false;}};
  const hold=createHoldLock(200,()=>{
   if(!view.dragging||view.invalid||view.target||view.attackError||!view.dest||E.dist(u,view.dest)===0)return;
   if(!anchor){anchor={dest:{...view.dest},route:[...view.route]};lockAnchor=true;}
-  view.moveArmed=true;sound.play('lock');placeOrders();draw();
+  view.moveArmed=true;sound.play('lock');paintRoute();
+ });
+ // A second deliberate stop can correct this gesture's provisional lock.
+ // Merely crossing empty cells on the way to an enemy keeps the firing point.
+ const correction=createHoldLock(200,cell=>{
+  if(!view.dragging||!lockAnchor||existingArrow||!correctionPoint||cell!==E.key(view.cursor)||E.at(s,correctionPoint))return;
+  if(!draftMove(u,correctionPoint,null,false)||view.attackError||E.dist(u,view.dest)===0)return;
+  anchor={dest:{...view.dest},route:[...view.route]};view.menu=false;view.moveArmed=true;
+  correction.reset();sound.play('lock');paintRoute();
  });
  const update=(x,y,release=false)=>{
   const point=mapPoint(x,y),cell=E.key(point),enemy=E.at(s,point)?.team==='enemy';
+  hold.move(x,y);correction.move(x,y);
   if(!release&&cell===lastCell)return;lastCell=cell;
+  if(enemy)correction.reset();
   if(cell!==E.key(u))dropStay();
   // Once locked, preserve the exact endpoint through intervening empty cells
   // on the way to a ranged target; release away from endpoint/enemy cancels.
   if(anchor&&!enemy){
    if(!hold.armed)hold.reset();
+   if(!release&&lockAnchor&&!existingArrow&&cell!==E.key(anchor.dest)&&!E.at(s,point)&&E.dist(u,point)>0&&E.routeTo(s,u,point).length){
+    correctionPoint={...point};correction.enter(cell,{x,y});
+   }else correction.reset();
    // Leaving a target clears the intent. The drawn endpoint stays fixed.
    view.target=null;view.attackError=null;view.menu=false;view.invalid=false;
-   view.cursor={...point};placeOrders();draw();return;
+   view.cursor={...point};paintRoute();return;
   }
   // Preserve the last *explicitly visited* legal destination when crossing onto
   // an enemy; slideDraft without an anchor could silently pick a new approach.
@@ -354,21 +369,22 @@ function beginMapGesture(clientX,clientY){
    const dest=view.dest||u,route=E.routeTo(s,u,dest);
    if(route.length)anchor={dest:{x:dest.x,y:dest.y},route:[...route]};
   }
-  const legal=draftMove(u,point,enemy?anchor:null);
+  const legal=draftMove(u,point,enemy?anchor:null,false);
   // Keep the static command dock hidden throughout the gesture; the live HP
   // and counter preview is already shown by placeOrders().
   view.menu=false;
   if(!release){
-   if(!enemy&&legal&&!view.attackError&&E.dist(u,view.dest)>0&&!anchor)hold.enter(cell);
+   if(!enemy&&legal&&!view.attackError&&E.dist(u,view.dest)>0&&!anchor)hold.enter(cell,{x,y});
    else if(!hold.armed)hold.reset();
   }
-  placeOrders();draw();
+  paintRoute();
  };
- const restore=()=>{hold.reset();dropStay();for(const k of Object.keys(view))if(!(k in before))delete view[k];Object.assign(view,before);refresh();};
+ const restore=()=>{stopPaint();correction.reset();hold.reset();dropStay();for(const k of Object.keys(view))if(!(k in before))delete view[k];Object.assign(view,before);refresh();};
  const end=(x,y)=>{
+  stopPaint();correction.reset();
   const point=mapPoint(x,y),enemy=E.at(s,point)?.team==='enemy';
   // Classify release while the lock is still armed; no command can fire on cancel.
-  const quick=hold.armed,stay=stayArmed;clearTimeout(stayTimer);update(x,y,true);
+  const quick=hold.armed,stay=stayArmed;clearTimeout(stayTimer);update(x,y,true);stopPaint();
   view.dragging=false;view.destinationPress=false;view.moveArmed=false;hold.reset();
   // A deliberate enemy release is the confirmation: no 200ms hold and no
   // second attack button. Engine legality is still checked inside commit().
@@ -388,7 +404,7 @@ function beginMapGesture(clientX,clientY){
   openDraft();
  };
  const tap=(x,y)=>{
-  hold.reset();const stay=stayArmed;clearTimeout(stayTimer);
+  stopPaint();correction.reset();hold.reset();const stay=stayArmed;clearTimeout(stayTimer);
   // Trial A: a still 0.2s hold on the unit is an explicit wait in place.
   if(unitOrigin&&stay&&!view.invalid){view.dragging=false;view.moveArmed=false;view.dest={x:u.x,y:u.y};view.target=null;commit('wait');return;}
   if(same){view.dragging=false;cancelDraft();return;}
