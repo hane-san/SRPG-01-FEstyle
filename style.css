@@ -405,3 +405,18 @@ a{color:#e4c8f0}
 @media(max-height:500px) and (min-width:600px){#modal:has(#deploymentList){width:310px;max-height:96dvh;margin:6px 8px 6px auto}}
 
 .sample-preview{display:block}
+
+/* UI comfort pass (2026-11-10, producer request): the controls used every turn read a size larger. Header (52/48px) and
+   dock heights, the footer row and every button's place are unchanged; only type sizes and the hint's contrast change. */
+footer button{font-size:12px}
+@media(min-width:375px){footer button{font-size:13px}}
+@media(max-width:340px){footer button{font-size:11px}}
+#battleHeader .mission-link{font-size:12px}
+#soundBtn{font-size:11px}
+@media(max-width:340px){#battleHeader .mission-link{font-size:11px}#soundBtn{font-size:10px}}
+#zoomLabel{font-size:11px}
+.map-card small{font-size:11px}
+#modalBody .log-line{font-size:12px}
+.unit-name small{font-size:11px}
+/* Landscape phones: the footer shares the 300px dock column, so its buttons keep their original size. */
+@media(max-height:500px) and (min-width:600px){footer button{font-size:11px}}
