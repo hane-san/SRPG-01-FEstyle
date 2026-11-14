@@ -12,6 +12,4 @@ transcript or another assistant's private memory.
 
 Follow the approved issue for implementation and independent evidence for review.
 Use the actual available model in Claude Code; this file does not select one.
-Never push directly to main, force-push or enable GitHub auto-merge. Record unverified
-checks. During the nonstop prototype phase (AGENTS.md, from 2026-10-21) the daily
-afternoon run merges PRs that pass the merge gate; other sessions leave merging to it.
+Follow the autopilot phase in AGENTS.md (human instruction 2026-11-14): adopted PRs merge through the required checks `rules`, `browser` and `gate` and GitHub auto-merge, and the daily 15:00 run is retired. Never push directly to main or force-push. For a large change the human asks for directly, write a short technical design in the PR body first, then leave merging to auto-merge. Record unverified checks; how the parts work is in `docs/AUTOPILOT.md`.
