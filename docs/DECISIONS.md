@@ -125,3 +125,25 @@
 - ヘッダー（52/48px）・命令ドック（144px／横向き300px列）・フッターの高さと並び、盤面の配置、ルール・数値・保存・音楽は変えない。CSSだけの変更で、`style.css` の読み込みタグを更新。
 - 320〜430幅と横向きで、最長の「敵フェーズへ（未行動9）」でもはみ出し・切れ・横スクロールがないことを確認。実機・独立監査は未検証。
 - CI：`ubuntu-latest` がUbuntu 26.04へ移り、Playwright 1.57.0 がChromiumを導入できずbrowserジョブがテスト前に失敗したため、browserジョブだけ `ubuntu-24.04` に固定（ARPG-01／ARPG-02と同じ対処。検査内容は変更なし、Settings変更ではない）。
+
+## 2026-11-14 — AGENTS.md の整理で移した原文（docs/slim-contract）
+
+- 規則の中身は変えずに、AGENTS.md を5部（このゲーム／現在のフェーズと契約／現在の不変条件／コマンドとファイル／リリースと引継ぎ）に組み直した。
+- #68と#29の節は、現在有効な規則だけを AGENTS.md の「3. Game invariants」に要約し、経緯を含む原文を以下にそのまま残す。現在値の正本は AGENTS.md。
+
+### Compact base classes (owner adoption 2026-10-24, Issue #68) — original text
+
+- Keep only seven playable *base* professions: sword=軽装兵, shield=重装兵, spear=槍兵, bow=弓兵, horse=騎兵, mage=魔術師, shooter=砲兵; bandit=賊 is enemy-only, **not a rename of light infantry**. Internal IDs sword/shield/bow/horse/mage/shooter stay for saves.
+- Collapse legacy healer/medic types into mage while retaining all nine slots, two cavalry and **three P3 healer slots**. Teo (a8) stays a mage after the collapse; do not assign a spear to the existing roster until a follow-up balancing decision. Legacy saves must preserve healer supplies and battle progress.
+- Preserve current six maps, enemy IDs/positions/types/AI, existing numeric balance, HP6, sortie/cap/P1-P4, P3 static heal/artillery, progress and save key. Only spear's +1 deterministic damage vs horse is the first small combat experiment. Do **not** opportunistically add bandit mobs or rebalance maps here.
+- **Balance is carried forward now and reevaluated later.** An early Teo-to-spear trial broke multiple historical map outcome tests, so the roster change was reverted; spear anti-cavalry exists as a unit-tested rule only, not an active campaign unit. Full specification: [docs/base-classes-68.md](docs/base-classes-68.md).
+
+**Later adopted limited trials (#71/#72, integrated by PR #75):** map01 enemy `e1` is a bandit, map04 allied reserve `aux-shield` is a spear, and map06 enemy `extra-5-0-2` is a spear. These three placements supersede the original #68 no-placement restriction only for those slots. The named nine-person roster, three mage healers and two cavalry remain unchanged. Further placements, roster exchanges and raid targeting are still separate decisions; #70 remains a proposal. See [the audit and remaining work](docs/issues-pr-audit-20261026.md).
+
+### Issue #29 castle opening (integrated into main) — original text
+
+- All allied characters begin in the castle reserve; zero on-board allies at map start. Players tap castle, choose the glyph/name, and gesture from the castle to their destination. Turn 1 permits two voluntary sorties; later turns permit one, board maximum remains five. No resource, state, or save changes before command validation.
+- Only committed `deployAndAct` emits a `deploy` observer (its provisional `line` field stays in the event data). Since Issue #96 (owner decision 2026-10-31) playback shows **no subtitle and adds no wait**: the short gate clank overlaps the first step and the sortie then moves/attacks like any other order. Preserve input lock and save atomicity.
+- Issue #96 also removes the Attack button for allied specialists (healing mages, artillery), renames end turn to 「敵フェーズへ（未行動n）」 counting board units only, and offers 「未行動の部隊へ戻る」 in the confirmation. Trial A (menu toggle 「移動操作」, default off) lets a unit slide released on a legal empty tile move+wait at once and a still 0.2s hold wait in place; the default keeps rule 9 below.
+- Existing P3 specialist rules from PR #27 still apply. PR #31 was originally stacked on that branch; the combined work is now in main through PR #33. Do not reapply the historical branches.
+- Historical 2-ally placement tests can seed old positions explicitly; production `createGame` must start with no deployed ally.
