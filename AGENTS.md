@@ -1,12 +1,14 @@
 # FIELD COMMAND / 戦線指揮
 
-This is the canonical `hane-san/SRPG-01-FEstyle` repository (formerly `hane-san/SRPG`). Do not modify the separate Nagi island game.
+## 1. This game and the other two
 
-**Current v0.8.0 rules supersede v0.7 examples below:** read [docs/hp6-campaign-design.md](docs/hp6-campaign-design.md) first, then [docs/p3-specialists-playtest.md](docs/p3-specialists-playtest.md). P3 specialists and the all-reserve castle opening are integrated into main; the old all-class P3 stance and initial two deployed allies are historical rules. Main HP6 branch changes intentionally replace earlier shooter/healer/attrition contracts. Finale narrative is documentation only, not implemented.
+This is the canonical `hane-san/SRPG-01-FEstyle` repository (formerly `hane-san/SRPG`). The other independent games are `hane-san/ARPG-02-retrostyle` and `hane-san/ARPG-01-SkyrimStyle` (the Nagi island game); do not modify them.
+Entry documents: current rules [docs/hp6-campaign-design.md](docs/hp6-campaign-design.md) (v0.8.0, read first) and [docs/p3-specialists-playtest.md](docs/p3-specialists-playtest.md); setup/handoff [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md); [docs/DESIGN.md](docs/DESIGN.md); [docs/DECISIONS.md](docs/DECISIONS.md) (dated history, including the original text of sections moved out of this file on 2026-11-14); [docs/ROADMAP.md](docs/ROADMAP.md); findings [docs/input-performance-0.7.0.md](docs/input-performance-0.7.0.md). Claude Code imports this file from `CLAUDE.md`; keep one rules contract.
+**Current v0.8.0 rules supersede older examples.** P3 specialists and the all-reserve castle opening are in main; the old all-class P3 stance and initial two deployed allies are historical. HP6 branch changes intentionally replace earlier shooter/healer/attrition contracts. The finale narrative is documentation only, not implemented.
 
-Shared setup / handoff: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Current findings: [docs/input-performance-0.7.0.md](docs/input-performance-0.7.0.md). Next work: [docs/ROADMAP.md](docs/ROADMAP.md). Claude Code imports this file from `CLAUDE.md`; keep one rules contract.
+## 2. Current phase and development contract
 
-## Nonstop prototype phase (human instruction 2026-10-21)
+### Nonstop prototype phase (human instruction 2026-10-21)
 
 The human producer wants ideas thrown in at lunch to be playable on GitHub Pages by the evening. Until the human declares a stabilization phase, this section overrides the merge-approval wording elsewhere in this file, in `CLAUDE.md` and in `docs/DEVELOPMENT.md`.
 
@@ -25,16 +27,7 @@ The human producer wants ideas thrown in at lunch to be playable on GitHub Pages
 - **Scenario and direction documents**: story/world direction lives in `docs/DIRECTION.md` (created by the first PR that needs it). Direction PRs may be docs-only; the afternoon run merges them and implements only the parts the human adopted. Unadopted brainstorms stay marked 「提案」.
 - SRPG specifics during this phase: HP6 rules, the P1→P4 order, determinism and save compatibility (`save.js`) stay binding. Run `npm run simulate` when rules, numbers or maps change and record the result. A change to the save format needs a migration test in the same PR.
 
-## Compact base classes (owner adoption 2026-10-24, Issue #68)
-
-- Keep only seven playable *base* professions: sword=軽装兵, shield=重装兵, spear=槍兵, bow=弓兵, horse=騎兵, mage=魔術師, shooter=砲兵; bandit=賊 is enemy-only, **not a rename of light infantry**. Internal IDs sword/shield/bow/horse/mage/shooter stay for saves.
-- Collapse legacy healer/medic types into mage while retaining all nine slots, two cavalry and **three P3 healer slots**. Teo (a8) stays a mage after the collapse; do not assign a spear to the existing roster until a follow-up balancing decision. Legacy saves must preserve healer supplies and battle progress.
-- Preserve current six maps, enemy IDs/positions/types/AI, existing numeric balance, HP6, sortie/cap/P1-P4, P3 static heal/artillery, progress and save key. Only spear's +1 deterministic damage vs horse is the first small combat experiment. Do **not** opportunistically add bandit mobs or rebalance maps here.
-- **Balance is carried forward now and reevaluated later.** An early Teo-to-spear trial broke multiple historical map outcome tests, so the roster change was reverted; spear anti-cavalry exists as a unit-tested rule only, not an active campaign unit. Full specification: [docs/base-classes-68.md](docs/base-classes-68.md).
-
-**Later adopted limited trials (#71/#72, integrated by PR #75):** map01 enemy `e1` is a bandit, map04 allied reserve `aux-shield` is a spear, and map06 enemy `extra-5-0-2` is a spear. These three placements supersede the original #68 no-placement restriction only for those slots. The named nine-person roster, three mage healers and two cavalry remain unchanged. Further placements, roster exchanges and raid targeting are still separate decisions; #70 remains a proposal. See [the audit and remaining work](docs/issues-pr-audit-20261026.md).
-
-## Shared AI development contract
+### Shared AI development contract
 - Scope work to this repository and the approved issue. The human producer decides game specifications, playtest acceptance and integration into main.
 - Read [docs/DESIGN.md](docs/DESIGN.md), [docs/DECISIONS.md](docs/DECISIONS.md) and the issue before editing. Distinguish approved, proposed, deferred, superseded and unverified items. Do not invent missing chat context; surface contradictions between approved specs, code and tests.
 - Handoff: human adoption in Chat -> Issue with acceptance criteria -> Codex or Claude Code/Sonnet work branch -> PR -> CI -> risk-based independent audit -> human playtest/approval -> main. Choose the implementation line by availability and context; model names are roles, not fixed API dependencies.
@@ -45,37 +38,10 @@ The human producer wants ideas thrown in at lunch to be playable on GitHub Pages
 - Repository name, game display name and internal save IDs are separate. Renaming, display-name migration, repository Settings and routines are separate tasks unless explicitly requested.
 - Leave an issue/PR, tested commit SHA and evidence for the next AI. Never commit credentials, private chat history or local tooling artifacts.
 
-## Run and verify
-- Static ES modules, no build step, no runtime dependencies or CDN.
-- `npm run dev` serves repository root on port 4173.
-- `npm run check` runs syntax and deterministic rules tests on Node.js 22+.
-- `npm run simulate` reproduces the baseline policy comparison (not an optimal strategy solver).
-- Optional browser QA: `npm install --no-save --package-lock=false playwright@1.57.0`, `npx playwright install chromium`, serve root, then `node tests/browser-check.mjs`, `node tests/interaction-check.mjs`, `node tests/overlay-check.mjs`, `node tests/usability-check.mjs` (or `npm run test:browser`).
-- Production URL (Pages enabled): `https://hane-san.github.io/SRPG-01-FEstyle/` (case matters). The former `/SRPG/` Pages URL returns 404.
+## 3. Game invariants (current values)
 
-## Change map/data before adding rules
-- `data.js`: maps, terrain, positions, wave caps, roster. Coordinates are zero based. UI coordinates are one based.
-- `config.js`: combat numbers, classes, skill descriptions.
-- `engine.js`: pure deterministic commands and phases, no DOM or storage.
-- `render.js`: original procedural pixel art / range overlays.
-- `app.js` and `style.css`: quick-action battle UI, campaign, keyboard; Attack/Wait are the final choice with no extra confirmation.
-- `ui-model.js`: forecast/target/slide/next-ready helpers; delegate rule calculations to engine.
-- `playback.js`: tile interpolation and ordered hit/counter/heal presentation; never resolve rules here.
-- `audio.js`: original Web Audio cues, gesture unlock, persistent mute; audio failure cannot block play.
-- `music.js`/`music-extra.js`: original 26 tracks preserved as No.01–26, plus sixteen newly composed sorrowful-heroic candidate tracks No.27–42. Per-map P1 and P2–P4 assignments use stable `MAP_TRACK_NUMBERS`; see `docs/music-catalogue.md`. Includes melody/harmony/bass, Web Audio lookahead scheduling and independent persistent music preference/volume. Initial music OFF, effects ON. P1 uses ally score; P2–P4 share a hostile score without restarting between those phases. No borrowed melodies or samples. Pause in background; require a gesture to unlock.
-- `assets/`: temporary original knight app icon and exported PNGs; `npm run icons` uses optional sharp.
-- `ui-input.js`: single pointer gesture tracking; a drag that returns to its origin is still a drag.
-- `save.js`: optional local storage, validation, P1/finished-state restore.
-- Read `docs/balance.md` before changing balance; preserve open hypotheses rather than calling them resolved.
+### Turn, combat and input rules
 
-## Issue #29 castle opening (integrated into main)
-- All allied characters begin in the castle reserve; zero on-board allies at map start. Players tap castle, choose the glyph/name, and gesture from the castle to their destination. Turn 1 permits two voluntary sorties; later turns permit one, board maximum remains five. No resource, state, or save changes before command validation.
-- Only committed `deployAndAct` emits a `deploy` observer (its provisional `line` field stays in the event data). Since Issue #96 (owner decision 2026-10-31) playback shows **no subtitle and adds no wait**: the short gate clank overlaps the first step and the sortie then moves/attacks like any other order. Preserve input lock and save atomicity.
-- Issue #96 also removes the Attack button for allied specialists (healing mages, artillery), renames end turn to 「敵フェーズへ（未行動n）」 counting board units only, and offers 「未行動の部隊へ戻る」 in the confirmation. Trial A (menu toggle 「移動操作」, default off) lets a unit slide released on a legal empty tile move+wait at once and a still 0.2s hold wait in place; the default keeps rule 9 below.
-- Existing P3 specialist rules from PR #27 still apply. PR #31 was originally stacked on that branch; the combined work is now in main through PR #33. Do not reapply the historical branches.
-- Historical 2-ally placement tests can seed old positions explicitly; production `createGame` must start with no deployed ally.
-
-## Invariants
 1. P1 ally action -> P2 enemy -> P3 ally support -> P4 announced events.
 2. No enemy general-unit P3 skills, hit/miss RNG, hidden lethal events, squad attrition resources or asset reuse from Fire Emblem.
 3. P3 requires no move; the only P3 specialist allies are shooter (single-target artillery) and mage/healer/medic (temporary mage-family single-target healing). No P2 counter from any ally specialist, even without ammo; no consumption if no valid target.
@@ -92,21 +58,66 @@ The human producer wants ideas thrown in at lunch to be playable on GitHub Pages
 12. Route previews and movement events must use engine.routeTo, the weighted movement field shared with reachable. Pointerdown on an unselected ready ally selects it immediately and captures the gesture. Sliding into an enemy keeps the last legal firing position or finds a legal approach. Enemy contact may update the draft preview while still held, but command controls stay hidden throughout the drag; release shows the quick menu. Unit-origin drags only preview; the two-tap non-attacking move is the explicit commit exception. Empty/outside-range drags pan through game handlers. Set touch-action:none before pointerdown and suppress map contextmenu, selection and touch callouts. Cancellation/multitouch restore the entire pre-press draft.
 13. Animate movement along adjacent route tiles, then first strike, then a legal counter as separate engine observations. Present enemies sequentially. Playback speed/reduced motion/sound must not change results or enable input mid-command. Sound starts only after a user gesture and has persistent mute.
 
-## Releases
+### Classes and roster (Issue #68, limited trials #71/#72 via PR #75)
+
+- Seven playable base professions: sword=軽装兵, shield=重装兵, spear=槍兵, bow=弓兵, horse=騎兵, mage=魔術師, shooter=砲兵. bandit=賊 is enemy-only and **not a rename of light infantry**. Internal IDs sword/shield/bow/horse/mage/shooter stay for saves.
+- Legacy healer/medic types are collapsed into mage while all nine slots, two cavalry and **three P3 healer slots** remain. Teo (a8) stays a mage. Legacy saves keep healer supplies and battle progress.
+- Spear deals +1 deterministic damage against horse. The only active placements of the new classes are: map01 enemy `e1` bandit, map04 allied reserve `aux-shield` spear, map06 enemy `extra-5-0-2` spear. The named nine-person roster, three mage healers and two cavalry are unchanged.
+- Otherwise preserve the six maps, enemy IDs/positions/types/AI, numeric balance, HP6, sortie/cap/P1–P4, P3 static heal/artillery, progress and save key. Balance is carried forward and reevaluated later: do not opportunistically add bandits, rebalance maps, place further spears or exchange roster members. Further placements, roster exchanges and raid targeting are separate decisions; #70 remains a proposal. Spec: [docs/base-classes-68.md](docs/base-classes-68.md), audit: [docs/issues-pr-audit-20261026.md](docs/issues-pr-audit-20261026.md).
+
+### Castle opening (Issue #29) and command flow (Issue #96)
+
+- All allied characters begin in the castle reserve; zero on-board allies at map start. Players tap the castle, choose the glyph/name, and gesture from the castle to the destination. Turn 1 permits two voluntary sorties, later turns one; the board maximum stays five. No resource, state or save changes before command validation. Production `createGame` starts with no deployed ally; historical 2-ally placement tests may seed old positions explicitly.
+- Only a committed `deployAndAct` emits a `deploy` observer (its provisional `line` field stays in the event data). Playback shows **no subtitle and adds no wait**: the short gate clank overlaps the first step and the sortie then moves/attacks like any other order. Preserve input lock and save atomicity.
+- Allied specialists (healing mages, artillery) have no Attack button. End turn reads 「敵フェーズへ（未行動n）」, counting board units only, and its confirmation offers 「未行動の部隊へ戻る」. Trial A (menu toggle 「移動操作」, default off): releasing a unit slide on a legal empty tile moves+waits at once, and a still 0.2 s hold waits in place; the default keeps rule 9.
+
+### Screen, report and performance contracts
+
+Optional maps 04–06 are standalone only; retain the original three-chapter campaign. Map controls start collapsed. Command controls must never overlap the map viewport or movement/attack ranges. Keep the dock height stable during all draft and command states.
+
+When a route is already drawn, an enemy flick must retain that endpoint and route. A secondary gesture may start at the endpoint, original selected unit or empty map. Intermediate empty cells do not edit the anchor before the final intent is known; releasing on an empty tile explicitly edits the route. Out-of-range targets disable attack and explain why; never silently choose another firing position or another target. Without an explicit route, a direct enemy selection may still suggest a legal approach. Command controls are outside the map, hidden during route editing, and show concise information with readable text (forecast/actions at least 14px); move long explanations to Details. Blue movement and the outer cyan normal-attack area must not overlap; P3 remains separately described.
+
+Battle reports must show actual observer-driven attack/counter/heal HP changes outside the map, including offscreen actions. They persist without a dismissal and yield to the next unit selection. Commands never gain a confirmation step; end-turn confirmation is needed only for unacted units. Playback trims idle/movement delays while preserving visible ordered impacts. `npm run audit:balance` records all map policies plus campaign/difficulty examples; these are examples, not optimal play or proof of human enjoyment.
+
+0.7 performance/input contracts: do not recompute movement/danger fields on presentation frames. Renderer owns at most two map-sized 32px-per-tile cached surfaces per live canvas, keyed by terrain/map, weather, relevant unit state and draft overlay data. Changes to positions, deaths, movement/range stats, weather, selection, warnings or terrain must invalidate the relevant layer. Clip range loops to the map even for very large future ranges. Map-editor tests must preserve valid rows, passable deployments, distinct IDs/positions and connected objectives. A later animation callback error must reject and clear scheduled work so app finalization can release its lock. Disable navigation/command controls and keyboard orders during a held routing gesture. Maintain the charcoal/plum, ivory and brass interface separately from blue/red teams and green terrain.
+
+### Older contracts still binding where they do not conflict with HP6
+
+Historical 0.6 audit contracts (superseded when in conflict with current HP6 design): keep surviving captains in their deployment slots after a loss; emergency recruits must not collide. At chapter-two start, an empty base duty passes to a living defender, with an adjacent healer when available; never revive a named lost captain. New enemy specs may explicitly set HP/DEF; default ally class stats and shooter fragility remain intact. Keep stable enemy IDs across map revisions.
+
+### Product boundaries
+
+- Static ES modules, no build step, no runtime dependencies or CDN. Pages: `https://hane-san.github.io/SRPG-01-FEstyle/` (case matters; the former `/SRPG/` URL returns 404). No service worker.
+- Original assets and music only; no borrowed melodies, samples or Fire Emblem assets.
+
+## 4. Commands and file map
+
+- Static ES modules, no build step, no runtime dependencies or CDN.
+- `npm run dev` serves repository root on port 4173.
+- `npm run check` runs syntax and deterministic rules tests on Node.js 22+.
+- `npm run simulate` reproduces the baseline policy comparison (not an optimal strategy solver).
+- Optional browser QA: `npm install --no-save --package-lock=false playwright@1.57.0`, `npx playwright install chromium`, serve root, then `node tests/browser-check.mjs`, `node tests/interaction-check.mjs`, `node tests/overlay-check.mjs`, `node tests/usability-check.mjs` (or `npm run test:browser`).
+- Production URL (Pages enabled): `https://hane-san.github.io/SRPG-01-FEstyle/` (case matters). The former `/SRPG/` Pages URL returns 404.
+
+- `data.js`: maps, terrain, positions, wave caps, roster. Coordinates are zero based. UI coordinates are one based.
+- `config.js`: combat numbers, classes, skill descriptions.
+- `engine.js`: pure deterministic commands and phases, no DOM or storage.
+- `render.js`: original procedural pixel art / range overlays.
+- `app.js` and `style.css`: quick-action battle UI, campaign, keyboard; Attack/Wait are the final choice with no extra confirmation.
+- `ui-model.js`: forecast/target/slide/next-ready helpers; delegate rule calculations to engine.
+- `playback.js`: tile interpolation and ordered hit/counter/heal presentation; never resolve rules here.
+- `audio.js`: original Web Audio cues, gesture unlock, persistent mute; audio failure cannot block play.
+- `music.js`/`music-extra.js`: original 26 tracks preserved as No.01–26, plus sixteen newly composed sorrowful-heroic candidate tracks No.27–42. Per-map P1 and P2–P4 assignments use stable `MAP_TRACK_NUMBERS`; see `docs/music-catalogue.md`. Includes melody/harmony/bass, Web Audio lookahead scheduling and independent persistent music preference/volume. Initial music OFF, effects ON. P1 uses ally score; P2–P4 share a hostile score without restarting between those phases. No borrowed melodies or samples. Pause in background; require a gesture to unlock.
+- `assets/`: temporary original knight app icon and exported PNGs; `npm run icons` uses optional sharp.
+- `ui-input.js`: single pointer gesture tracking; a drag that returns to its origin is still a drag.
+- `save.js`: optional local storage, validation, P1/finished-state restore.
+- Read `docs/balance.md` before changing balance; preserve open hypotheses rather than calling them resolved.
+
+## 5. Releases, records and handoff
+
 - `node scripts/release.mjs 0.7.0` updates version tags on every ES module edge, CSS URL, package and version.json.
 - v0.8.0 is not combat-save compatible with v0.7.0 or earlier; preserve new v0.8 saves and fail safely on older state. The P3 area-heal rule applies prospectively.
 - Sync and inspect remote changes before publishing; never force-push or overwrite another tool’s changes.
 - Commit and push the work branch, then open a PR. After CI, risk-based review and human approval, merge into main; Pages deploys from main / root. No service worker.
 - Include playtest findings with actual observations; never claim iOS hardware testing from Chromium emulation.
 - Do not commit test-results/, node_modules/, browser executables, credentials or personal chat context.
-
-
-Optional maps 04–06 are standalone only; retain the original three-chapter campaign. Map controls start collapsed. Command controls must never overlap the map viewport or movement/attack ranges. Keep the dock height stable during all draft and command states.
-
-When a route is already drawn, an enemy flick must retain that endpoint and route. A secondary gesture may start at the endpoint, original selected unit or empty map. Intermediate empty cells do not edit the anchor before the final intent is known; releasing on an empty tile explicitly edits the route. Out-of-range targets disable attack and explain why; never silently choose another firing position or another target. Without an explicit route, a direct enemy selection may still suggest a legal approach. Command controls are outside the map, hidden during route editing, and show concise information with readable text (forecast/actions at least 14px); move long explanations to Details. Blue movement and the outer cyan normal-attack area must not overlap; P3 remains separately described.
-
-Historical 0.6 audit contracts (superseded when in conflict with current HP6 design): keep surviving captains in their deployment slots after a loss; emergency recruits must not collide. At chapter-two start, an empty base duty passes to a living defender, with an adjacent healer when available; never revive a named lost captain. New enemy specs may explicitly set HP/DEF; default ally class stats and shooter fragility remain intact. Keep stable enemy IDs across map revisions.
-
-Battle reports must show actual observer-driven attack/counter/heal HP changes outside the map, including offscreen actions. They persist without a dismissal and yield to the next unit selection. Commands never gain a confirmation step; end-turn confirmation is needed only for unacted units. Playback trims idle/movement delays while preserving visible ordered impacts. `npm run audit:balance` records all map policies plus campaign/difficulty examples; these are examples, not optimal play or proof of human enjoyment.
-
-0.7 performance/input contracts: do not recompute movement/danger fields on presentation frames. Renderer owns at most two map-sized 32px-per-tile cached surfaces per live canvas, keyed by terrain/map, weather, relevant unit state and draft overlay data. Changes to positions, deaths, movement/range stats, weather, selection, warnings or terrain must invalidate the relevant layer. Clip range loops to the map even for very large future ranges. Map-editor tests must preserve valid rows, passable deployments, distinct IDs/positions and connected objectives. A later animation callback error must reject and clear scheduled work so app finalization can release its lock. Disable navigation/command controls and keyboard orders during a held routing gesture. Maintain the charcoal/plum, ivory and brass interface separately from blue/red teams and green terrain.
