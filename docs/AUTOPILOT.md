@@ -85,3 +85,5 @@ high（`lane/claude`）は、はねさんが Claude Code に直接頼む。PRを
 4. 試運転のあと、「試運転まで停止中」の `autopilot-stop` Issue を閉じる。
 
 鍵の作成や Secrets の登録は要らない。見回りの定期タスクは Claude Code 側（claude.ai/code の Scheduled）にあり、Claude の GitHub App の権限で動く。
+
+<!-- gate test -->
