@@ -85,3 +85,7 @@ high（`lane/claude`）は、はねさんが Claude Code に直接頼む。PRを
 4. 試運転のあと、「試運転まで停止中」の `autopilot-stop` Issue を閉じる。
 
 鍵の作成や Secrets の登録は要らない。見回りの定期タスクは Claude Code 側（claude.ai/code の Scheduled）にあり、Claude の GitHub App の権限で動く。
+
+## 試運転の記録
+
+- 2026-11-14：Issue #121 を見回りの手順どおり振り分け（`lane/auto`）→ `claude/121-autopilot-trial` で実装 → PR → auto-merge で通した。
