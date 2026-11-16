@@ -26,14 +26,15 @@ try{
   await page.locator('#nextUnit').click();assert((await t.draft()).selected);
   await t.tap({x:4,y:15});const quietBefore=await t.state();await t.tap({x:3,y:15});await t.settled();
   const quietExpected=structuredClone(quietBefore);assert(E.act(quietExpected,'a2',{x:3,y:15},'wait').ok);assert.deepEqual(await t.state(),quietExpected);
-  await t.tap({x:5,y:14});const before=await t.state(),stable=await t.camera();
+  if(width===390&&height===844){await page.locator('#menuBtn').click();await page.locator('#audioDetails summary').click();await page.locator('#musicToggle').click();await page.locator('#closeModal').click();await page.waitForFunction(()=>srpgDebug.music().starts>0);}
+  await t.tap({x:5,y:14});const before=await t.state(),stable=await t.camera(),musicBefore=await page.evaluate(()=>srpgDebug.music());
   const aim=async()=>{await t.slide({x:5,y:14},{x:4,y:13},{end:false});await t.touch('touchMove',[await t.point({x:4,y:12})]);await t.touch('touchEnd',[]);};
   await aim();assert.deepEqual(await t.state(),before,'release is a forecast, never an attack');assert(await page.locator('#attackOrder').isEnabled());
   const preview=await page.locator('#actionPreview').innerText();assert(preview.includes('6')&&preview.includes('反撃'));
   const forecastGeometry=await page.locator('#actionPreview').evaluate(e=>{const r=e.getBoundingClientRect();return [...e.querySelectorAll('.forecast-side > *')].map(c=>{const q=c.getBoundingClientRect();return {text:c.textContent,inside:q.left>=r.left&&q.right<=r.right+.1&&q.top>=r.top-.1&&q.bottom<=r.bottom+.1};});});
   assert(forecastGeometry.every(c=>c.inside),JSON.stringify({width,height,forecastGeometry}));
   await page.screenshot({path:`test-results/mobile-audit-${width}-${height}-forecast.png`});
-  await page.locator('#orders button').getByText('戻る',{exact:true}).click();assert.deepEqual(await t.state(),before,'closing forecast consumes nothing');assert.deepEqual(await t.camera(),stable);
+  await page.locator('#orders button').getByText('戻る',{exact:true}).click();assert.deepEqual(await t.state(),before,'closing forecast consumes nothing');assert.deepEqual(await t.camera(),stable);const afterCancel=await page.evaluate(()=>srpgDebug.music());assert.equal(afterCancel.starts,musicBefore.starts,'forecast cancel never restarts BGM');assert.equal(afterCancel.scene,musicBefore.scene);
   await t.tap({x:5,y:14});await aim();assert.deepEqual(await t.state(),before);
   await page.locator('#attackOrder').evaluate(e=>{e.click();e.click();});await t.settled();
   const expected=structuredClone(before);assert(E.act(expected,'a1',{x:4,y:13},'attack','e1').ok);assert.deepEqual(await t.state(),expected,'double click resolves one full attack/counter');assert.deepEqual(await t.camera(),stable);
