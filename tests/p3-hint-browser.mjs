@@ -61,7 +61,7 @@ try{
   const empty=E.createGame();Object.assign(empty.units.find(u=>u.id===shooter.id),{deployed:true,...spot,charges:0});
   Object.assign(empty.units.find(u=>u.id===sword.id),{deployed:true,...empty.map.camp});
   await t.reset(empty);
-  assert.match(await page.locator('#orders').innerText(),/敵へスライドして離すと、そのまま攻撃/);
+  assert.match(await page.locator('#orders').innerText(),/敵へスライド.*予測.*攻撃/);
   await t.select(shooter.id);
   assert.ok(!isMark(await pixel(page,enemy.x*32+3,enemy.y*32+23)),'no P3 mark without ammo');
   assert.match(await page.locator('#commandDock').innerText(),/弾薬0・P3なし/);

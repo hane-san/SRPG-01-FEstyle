@@ -30,12 +30,17 @@ export function paintHpJewels(c,{x,y,hp,pendingEnd=hp,size=7,height=size,gap=1,a
 // Rectangles are in map pixels, bounded to the VISIBLE viewport, not only the map.
 // Reposition cards when adjacent actors would overlap; never move the camera.
 export function combatHpLayout(s,view,units){
- const v=view.polygonVisible||{x:0,y:0,w:s.map.w,h:s.map.h};
+ const v=view.combatVisible||view.polygonVisible||{x:0,y:0,w:s.map.w,h:s.map.h};
  const left=Math.max(0,v.x*32)+2,top=Math.max(0,v.y*32)+2;
  const right=Math.min(s.map.w*32,(v.x+v.w)*32)-2,bottom=Math.min(s.map.h*32,(v.y+v.h)*32)-2;
- const w=Math.min(88,right-left),h=36,gap=5;
+ // Combat labels are screen-sized, even when the full map uses 20px tiles.
+ // Keep map coordinates for connectors/culling, but never shrink names to 4px.
+ const screen=32/(view.tile||32),gap=6*screen,w=Math.min(132*screen,right-left);
+ const sideBySide=right-left>=w*2+gap;
+ const h=Math.min(64*screen,sideBySide?bottom-top:(bottom-top-gap)/2);
+ const scale=Math.min(screen,w/132,h/64);
  const clamp=(n,a,b)=>Math.max(a,Math.min(Math.max(a,b),n));
- const cards=units.map(u=>({id:u.id,x:clamp(u.x*32+16-w/2,left,right-w),y:clamp(u.y*32-(view.sampleTheme&&view.sampleTheme!=='original'?56:6)-h,top,bottom-h),w,h}));
+ const cards=units.map(u=>({id:u.id,x:clamp(u.x*32+16-w/2,left,right-w),y:clamp(u.y*32-(view.sampleTheme&&view.sampleTheme!=='original'?56:6)-h,top,bottom-h),w,h,scale}));
  if(cards.length===2){
   const [a,b]=cards;
   if(a.x<b.x+b.w+gap&&a.x+a.w+gap>b.x&&a.y<b.y+b.h+gap&&a.y+a.h+gap>b.y){

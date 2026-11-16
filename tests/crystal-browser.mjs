@@ -24,7 +24,7 @@ try{
    if(v.jewel?.zoom&&gemsAt===null){gemsAt=now;pending=v.jewel.hp===6&&v.jewel.pendingEnd===4;pair=v.combatHp?.units.length===2;}
    if(v.jewel?.zoom&&v.jewel.index>=0&&crackAt===null)crackAt=now;
    if(crackAt!==null||now>start+4000)resolve({numberAt,gemsAt,crackAt,pending,pair,anticipation});else requestAnimationFrame(tick);};const start=performance.now();tick();}));
-  const begin=Date.now();await t.slide({x:5,y:13},{x:5,y:12});await t.settled();const elapsed=Date.now()-begin;
+  await t.slide({x:5,y:13},{x:5,y:12});assert.deepEqual(await t.state(),board(2),'forecast does not resolve damage');const begin=Date.now();await page.locator('#attackOrder').click();await t.settled();const elapsed=Date.now()-begin;
   const order=await seen;
   if(motion==='no-preference'){assert(order.anticipation);assert.notEqual(order.numberAt,null);assert.equal(order.numberAt,order.gemsAt,'contact shows damage and pending halves on the same frame');assert(order.pending&&order.pair);assert(order.crackAt-order.numberAt>=85,'pending damage is readable before a half breaks');assert.ok(elapsed>=450&&elapsed<=3500,`attack took ${elapsed}ms`);}
   else assert.equal(order.gemsAt,null,'Reduced Motion keeps the quiet sequence');

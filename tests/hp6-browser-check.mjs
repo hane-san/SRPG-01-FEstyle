@@ -68,7 +68,7 @@ try{
   unit({id:'a',name:'味方',type:'sword',x:4,y:15},'ally'),
   unit({id:'e',name:'敵',type:'sword',x:4,y:14,ai:'hold'},'enemy')];
  await t.reset(melee);await t.select('a');
- assert((await page.locator('#actionPreview').innerText()).includes('6 → 4'));
+ assert((await page.locator('#actionPreview').innerText()).includes('6 → 残4'));
  await page.locator('#attackOrder').click();await t.settled();
  const hit=await t.state();assert.equal(hit.units[0].hp,4);assert.equal(hit.units[1].hp,4);
  assert((await page.locator('#orders').innerText()).includes('HP 6 →'));

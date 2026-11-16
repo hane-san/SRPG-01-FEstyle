@@ -52,7 +52,7 @@ try{
  assert(await page.locator('#moveUndo').isHidden());
  cases.push('locked destination remains fixed, off-endpoint release cancels');
 
- // A legal endpoint is fixed; the enemy release commits an attack immediately.
+ // A legal endpoint is fixed; enemy release opens a forecast without spending the command.
  await t.reset(fixture());await t.slide(origin,firing,{end:false});
  await page.waitForFunction(()=>window.srpgDebug.draft().moveArmed===true);
  await t.touch('touchMove',[await t.point(enemy)]);
@@ -61,12 +61,12 @@ try{
  const hint=await page.locator('#commandHint').innerText();
  assert(hint.includes('自HP')&&hint.includes('敵HP')&&hint.includes('反撃'),hint);
  assert(await page.locator('#orders').isHidden(),'held-finger command buttons are hidden');
- await t.touch('touchEnd',[]);await t.settled();
+ await t.touch('touchEnd',[]);assert.deepEqual(await t.state(),fixture(),'release only opens forecast');await page.locator('#attackOrder').click();await t.settled();
  const attackExpected=fixture();assert(E.act(attackExpected,'a',firing,'attack','e').ok);
  assert.deepEqual(await t.state(),attackExpected);
  assert.equal((await t.state()).metrics.commands,1);
  assert(await page.locator('#moveUndo').isHidden(),'an attack must not be undoable');
- cases.push('endpoint lock + continued enemy flick = immediate single attack with pre-release HP');
+ cases.push('endpoint lock + enemy flick opens forecast; one Attack choice executes once');
  // New #35 input: a fluid attack must not require the 200ms movement lock.
  await t.reset(fixture());
  const preFlick=await t.state();
@@ -76,21 +76,21 @@ try{
  assert.equal((await t.draft()).target,'e','enemy is previewed without the attack menu');
  assert.deepEqual((await t.draft()).dest,firing,'explicit endpoint must be preserved');
  assert(await page.locator('#orders').isHidden(),'command buttons stay hidden while aiming');
- assert((await page.locator('#commandHint').innerText()).includes('離して攻撃'));
+ assert((await page.locator('#commandHint').innerText()).includes('離して予測'));
  assert.deepEqual(await t.state(),preFlick,'aiming alone must not mutate the game');
- await t.touch('touchEnd',[]);await t.settled();
- assert.deepEqual(await t.state(),attackExpected,'enemy release immediately resolves the explicit attack');
- assert.equal((await t.state()).metrics.commands,1,'one pointer release means one action');
+ await t.touch('touchEnd',[]);assert.deepEqual(await t.state(),preFlick,'under-200ms release preserves the command');assert(await page.locator('#attackOrder').isEnabled());await page.locator('#attackOrder').click();await t.settled();
+ assert.deepEqual(await t.state(),attackExpected,'one Attack choice resolves the explicit attack');
+ assert.equal((await t.state()).metrics.commands,1,'one Attack choice means one action');
  assert(await page.locator('#moveUndo').isHidden());
- cases.push('under-200ms continuous legal destination → enemy release, no attack menu');
+ cases.push('under-200ms destination → enemy release → forecast → one Attack choice');
 
  // A previously previewed route can be continued by a second quick flick.
  await t.reset(fixture());await t.slide(origin,firing);
  assert.deepEqual((await t.draft()).dest,firing);
  assert.deepEqual(await t.state(),preFlick);
- await t.slide(firing,enemy);await t.settled();
+ await t.slide(firing,enemy);assert.deepEqual(await t.state(),preFlick);await page.locator('#attackOrder').click();await t.settled();
  assert.deepEqual(await t.state(),attackExpected);
- cases.push('second quick flick from previewed endpoint commits without attack button');
+ cases.push('second quick flick retains previewed endpoint until Attack is chosen');
 
  // Passing over an enemy does not confirm when the finger leaves elsewhere.
  await t.reset(fixture());await t.slide(origin,firing,{end:false});
@@ -124,14 +124,13 @@ try{
  assert.equal((await t.draft()).target,'e');
  await t.touch('touchMove',[await t.point({x:3,y:13})]);
  assert.equal((await t.draft()).target,'e2');
- await t.touch('touchEnd',[]);await t.settled();
+ await t.touch('touchEnd',[]);assert.deepEqual(await t.state(),choices,'target changes are previews');await page.locator('#attackOrder').click();await t.settled();
  const choicesExpected=structuredClone(choices);assert(E.act(choicesExpected,'a',firing,'attack','e2').ok);
  assert.deepEqual(await t.state(),choicesExpected);
  assert.equal((await t.state()).metrics.commands,1);
  cases.push('flick chooses the final explicit enemy among multiple targets');
 
- // Newly selected castle reserve should not have to visit a menu after sliding
- // from the castle through its exit and onto a legal enemy.
+ // Castle reserve uses the same explicit forecast and Attack choice as a deployed unit.
  const sortie=E.createGame(),gatePoint=sortie.map.camp,exit={x:gatePoint.x-1,y:gatePoint.y},sortieEnemy={x:exit.x,y:exit.y-1};
  sortie.units=[
   unit({id:'a',name:'出撃剣士',type:'sword',x:gatePoint.x,y:gatePoint.y,deployed:false},'ally'),
@@ -146,9 +145,9 @@ try{
  await t.slide(gatePoint,exit,{end:false});
  await t.touch('touchMove',[await t.point(sortieEnemy)]);
  assert.equal((await t.draft()).target,'e');
- await t.touch('touchEnd',[]);await t.settled();
- assert.deepEqual(await t.state(),sortieExpected,'castle→exit→enemy also attacks in one gesture');
- cases.push('castle sortie can move and attack on one continued finger gesture');
+ await t.touch('touchEnd',[]);assert.deepEqual(await t.state(),sortie,'sortie forecast spends no slot');await page.locator('#attackOrder').click();await t.settled();
+ assert.deepEqual(await t.state(),sortieExpected,'castle→exit→enemy→Attack commits one sortie');
+ cases.push('castle sortie forecast remains atomic until one Attack choice');
 
 
  // Ranged attacks cross intermediate empty cells without changing the fixed firing tile.
@@ -161,7 +160,7 @@ try{
  await t.touch('touchMove',[await t.point(enemy)]);
  assert.deepEqual((await t.draft()).dest,archerStep);
  assert.equal((await t.draft()).target,'e');
- await t.touch('touchEnd',[]);await t.settled();
+ await t.touch('touchEnd',[]);assert.deepEqual(await t.state(),archer);await page.locator('#attackOrder').click();await t.settled();
  const archerExpected=structuredClone(archer);assert(E.act(archerExpected,'a',archerStep,'attack','e').ok);
  assert.deepEqual(await t.state(),archerExpected);
  cases.push('bow crosses intervening empty tiles while keeping exact ranged attack origin');

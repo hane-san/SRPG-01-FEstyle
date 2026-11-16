@@ -9,14 +9,14 @@ import {appendChapter,chronicleLines} from './chronicle.js?v=0.8.0-war43';
 import {RELEASE,SKILLS,PROMOTIONS,RULES,CLASS_ROLES} from './config.js?v=0.8.0-p3-26-sortie29-classes68';
 import {MAPS} from './data.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72';
 import * as E from './engine.js?v=0.8.0-issue17-p3-26-sortie29-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-trial92-mixed107-figure111-half113';
-import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96-trial92-art97-crystal101-mixed107-polygon109-figure111-half113';
+import {render,mini} from './render.js?v=trial90-0.8.0-position22-p3-26-sortie29-issue24-gems28-flick35-fx39-weapon48-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-p3mark79-sample76-conserve79-ui96-trial92-art97-crystal101-mixed107-polygon109-figure111-half113-mobileaudit116';
 import {bindMapInput,createHoldLock,bindReserveInput} from './ui-input.js?v=trial90-hold115';
 import {readSave,writeSave} from './save.js?v=0.8.0-p3-26-save37-war43-classes68';
 import {attackTargets,battleForecast,nextReady,slideDraft,routeSummary} from './ui-model.js?v=0.8.0-position22-p3-26-map38-m02-war43-m02gate57-m04bridge58-m03guard59-m06phase63-m04cross66-m05rain61-garrison23-classes68-balance72-mixed107-figure111-half113';
 import {createAudio} from './audio.js?v=0.8.0-issue17-sortie29-issue24-gems28-flick35-weapon48-figure111-half113';
 import {createMusic,buildTrack,SCORES,BONUS_SCORES,MUSIC_LIBRARY,trackNumber,assignedTrackNumber,trackByNumber,THEME_SCORE_START} from './music.js?v=0.8.0-library42-theme104';
 import {STYLE_THEME} from './music-theme.js?v=theme104';
-import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-ui96-trial92-crystal101-mixed107-figure111-half113';
+import {createPlayback} from './playback.js?v=0.8.0-issue17-sortie29-gems28-flick35-fx39-weapon48-ui96-trial92-crystal101-mixed107-figure111-half113-mobileaudit116';
 import {DISPLAY_NAME} from './display-name.js?v=0.8.0-display-2fb0ebb2368b';
 const $=id=>document.getElementById(id),canvas=$('battlefield'),vp=$('mapViewport');
 // The preview is a separate, nonpersistent URL session. Normal saves are never read/written here.
@@ -59,7 +59,7 @@ let battleCard=null,lastNotice=null,pendingUndo=null;
 let thumb='right';try{thumb=thumbSide(localStorage.getItem('field-command-thumb-side'));}catch{}
 function applyThumb(){
  $('app').dataset.thumb=thumb;
- $('mapViewport').setAttribute('aria-label',`戦場。部隊から移動先へ滑らせ、敵上で離すと攻撃。移動だけなら0.2秒保持。直前の移動は${thumb==='left'?'左下':'右下'}から取り消せます`);
+ $('mapViewport').setAttribute('aria-label',`戦場。部隊を選び、空きマスをタップすると移動して待機。敵へ滑らせて離すと予測、攻撃ボタンで実行。直前の移動は${thumb==='left'?'左下':'右下'}から取り消せます`);
 }
 applyThumb();
 let riskCacheState=null,riskCacheTurn=-1,riskCache=new Map(),riskIndex=[];
@@ -106,7 +106,7 @@ function polygonFallback(){
  });
 }
 canvas.addEventListener('polygonfailure',polygonFallback);
-function draw(){view.polygonVisible={x:vp.scrollLeft/view.tile,y:vp.scrollTop/view.tile,w:vp.clientWidth/view.tile,h:vp.clientHeight/view.tile};view.polygonReduced=reduced()||fast;render(canvas,s,view);drawMini();if(view.polygonError&&polygonTheme(view.sampleTheme))polygonFallback();}
+function draw(){view.polygonVisible={x:vp.scrollLeft/view.tile,y:vp.scrollTop/view.tile,w:vp.clientWidth/view.tile,h:vp.clientHeight/view.tile};const cover=$('forecast').hidden?0:$('forecast').getBoundingClientRect().height;view.combatVisible={...view.polygonVisible,y:(vp.scrollTop+cover)/view.tile,h:Math.max(0,(vp.clientHeight-cover)/view.tile)};vp.parentElement.dataset.combatHp=view.combatHp?'true':'false';view.polygonReduced=reduced()||fast;render(canvas,s,view);drawMini();if(view.polygonError&&polygonTheme(view.sampleTheme))polygonFallback();}
 // Issue #101-C: redraw slowly only while an HP1 unit is on the board and the page is visible.
 setInterval(()=>{
  if(document.hidden||$('modal').open)return;
@@ -173,10 +173,10 @@ function placeOrders(){
  if(editing){
   const dest=view.dest||u,summary=routeSummary(s,u,dest,view.route?.length?view.route:[u]),target=s.units.find(t=>t.id===view.target);
   const hint=$('commandHint');hint.dataset.intent=routeIntent(view);hint.replaceChildren();
-  const route=document.createElement('strong');route.className='route-readout';route.textContent=`移動先 (${dest.x+1}, ${dest.y+1}) · コスト ${summary.cost??'—'}/${summary.budget} · ${summary.weather}`;
+  const route=document.createElement('strong');route.className='route-readout';route.textContent=`${u.name}${view.sortie?` · 出撃準備（あと${Math.max(0,E.deploymentLimit(s)-s.deployedThisTurn)}隊／戦場${E.alive(s,'ally').length}/${RULES.maxDeployed}）`:''}\n移動先 (${dest.x+1}, ${dest.y+1}) · コスト ${summary.cost??'—'}/${summary.budget} · ${summary.weather}`;
   const detail=document.createElement('span');detail.className='route-intent';
-  detail.textContent=view.attackError||(target?(()=>{const f=battleForecast(s,u,target,dest);return `${target.name} · 自HP ${u.hp}→${f.allyAfter} ／ 敵HP ${target.hp}→${f.enemyAfter} · 反撃${f.counter} · 敵の上で離して攻撃`;})():view.moveArmed?'固定しました · 空きマスで止め直して修正できます':`通常攻撃 ${summary.targets}隊 · 金の目印が対象`);
-  const help=document.createElement('span');help.className='route-help';help.textContent=view.target&&view.dragging?'敵の上で離すと攻撃確定':view.moveArmed?'カチャッ · 離すと移動／敵へ滑らせると攻撃':view.destinationPress&&!view.target?'敵へスライド。選ばず離すと取消':view.dragging?'敵まで滑らせて離すと直接攻撃／移動だけは0.2秒保持':'部隊からスライド（静止待機は命令欄から）';
+  detail.textContent=view.attackError||(target?(()=>{const f=battleForecast(s,u,target,dest);return `${target.name} · 自HP ${u.hp}→${f.allyAfter} ／ 敵HP ${target.hp}→${f.enemyAfter} · 反撃${f.counter} · 離して予測を確認`;})():view.moveArmed?'固定しました · 空きマスで止め直して修正できます':`通常攻撃 ${summary.targets}隊 · 金の目印が対象`);
+  const help=document.createElement('span');help.className='route-help';help.textContent=view.target&&view.dragging?'指を離して予測 → 攻撃ボタンで実行':view.moveArmed?'カチャッ · 固定中／敵へ滑らせると予測':view.destinationPress&&!view.target?'敵へスライド。選ばず離すと取消':view.dragging?'敵へ滑らせて離すと予測／移動だけは0.2秒保持':view.sortie?'選んだ部隊で城から出撃先へスライド':'空きマスをタップで移動・待機／部隊からスライドで命令';
   const alert=document.createElement('span');alert.className='route-risk';
   const risk=riskCue(focusedRisk(u,dest),u.hp,{cannon:hasAnnouncedCannon(s.warnings,dest)});
   alert.dataset.level=risk.level;alert.textContent=risk.text;
@@ -206,7 +206,7 @@ function panel(){
  else if(target){
   const p=battleForecast(s,u,target,dest);pre.classList.add('combat-forecast');
   const bar=(hp,max,kind)=>`<div class="hp-track ${kind}" aria-hidden="true"><i style="width:${Math.max(0,hp/max*100)}%"></i></div>`;
-  pre.innerHTML=`<div class="forecast-side ally"><span>自HP ${u.hp} → ${p.allyAfter}</span>${bar(p.allyAfter,u.maxHp,'ally')}<small class="${p.allyAfter===0?'fatal':''}">反撃 ${p.counter}${p.allyAfter===0?' · ⚠ 離脱':''}</small></div><div class="forecast-side enemy"><span>敵HP ${target.hp} → ${p.enemyAfter}</span>${bar(p.enemyAfter,target.maxHp,'enemy')}<small>攻撃 ${p.damage}${p.enemyAfter===0?' · 撃破':u.type==='bow'?' · 隣接不可':u.type==='shooter'?' · 距離3は1':''}</small></div>`;
+  pre.innerHTML=`<div class="forecast-side ally" aria-label="味方 ${escapeHTML(u.name)}、現在HP${u.hp}、行動後${p.allyAfter}"><strong class="forecast-name">味方 · ${escapeHTML(u.name)}</strong><span>HP ${u.hp} → 残${p.allyAfter}</span>${bar(p.allyAfter,u.maxHp,'ally')}<small class="${p.allyAfter===0?'fatal':''}">被反撃 −${p.counter}${p.allyAfter===0?' · ⚠ 離脱':''}</small></div><div class="forecast-side enemy" aria-label="敵 ${escapeHTML(target.name)}、現在HP${target.hp}、攻撃後${p.enemyAfter}"><strong class="forecast-name">敵 · ${escapeHTML(target.name)}</strong><span>HP ${target.hp} → 残${p.enemyAfter}</span>${bar(p.enemyAfter,target.maxHp,'enemy')}<small>被攻撃 −${p.damage}${p.enemyAfter===0?' · 撃破':u.type==='bow'?' · 隣接不可':u.type==='shooter'?' · 距離3は1':''}</small></div>`;
  }
  else{const command=E.waitCommand(u,dest);pre.textContent=(s.map.base&&E.dist(u,s.map.base)===0&&E.dist(dest,u)>0?'本陣から離れます ／ ':'')+(u.type==='bow'?'弓2マス・隣接不可 ／ ':u.type==='shooter'?'砲兵は移動せずP3砲撃 ／ ':u.skill==='heal'?'魔術師系は移動せずP3治療 ／ ':'')+(!E.canNormalAttack(u)&&E.dist(dest,u)>0?'移動待機：このターンP3なし':command&&!u.spend?'待機：弾薬温存・P3なし':command==='heal'?'待機：P3回復・P2反撃なし':command==='support'?'待機：P3攻撃・P2反撃なし':u.maxCharges&&u.charges<=0&&E.dist(dest,u)===0?'待機：弾薬0・P3なし':'待機：P3なし');}
  root.append(pre);
@@ -224,7 +224,7 @@ function renderReport(root=$('orders')){
  root.className='battle-report';root.hidden=false;$('commandHint').hidden=true;
  const title=lastNotice?.title||battleCard?.title||'行動中';
  let body=lastNotice?.text?`<div class="report-note">${escapeHTML(lastNotice.text)}</div>`:'';
- if(battleCard)body=`<div class="combatants">${battleCard.units.map(u=>`<div class="combatant ${u.team}"><strong>${escapeHTML(u.name)}</strong><div class="hp-track ${u.team}" aria-hidden="true"><i style="width:${Math.max(0,u.hp/u.maxHp*100)}%"></i></div><span>HP ${u.startHp} → <b>${u.hp}</b>${u.hp===0?` · ${u.team==='enemy'?'撃破':'離脱'}`:''}</span></div>`).join('')}</div>`;
+ if(battleCard)body=`<div class="combatants">${battleCard.units.map(u=>`<div class="combatant ${u.team}"><strong>${u.team==='ally'?'味方':'敵'} · ${escapeHTML(u.name)}</strong><div class="hp-track ${u.team}" aria-hidden="true"><i style="width:${Math.max(0,u.hp/u.maxHp*100)}%"></i></div><span>HP ${u.startHp} → <b>${u.hp}</b>${u.hp===0?` · ${u.team==='enemy'?'撃破':'離脱'}`:''}</span></div>`).join('')}</div>`;
   const tail=lastNotice?.tail||battleCard?.cue||(locked?'戦闘を表示中':'続けて部隊を選択できます');
   root.innerHTML=`<div class="report-title" role="status">${escapeHTML(title)}</div>${body}<div class="report-tail"><span class="report-tail-text" role="status">${escapeHTML(tail)}</span></div>`;
  if(!locked&&s.status==='playing'&&s.phase===1){const b=button(`出撃可 ${E.canDeploy(s)?E.deploymentLimit(s)-s.deployedThisTurn:0}隊 / 予備${E.reserves(s).length}隊`,openDeployment,'report-sortie subtle');b.disabled=!E.canDeploy(s);root.querySelector('.report-tail').append(b);}
@@ -260,10 +260,10 @@ function openDraft(){
 // It only appears in the first three turns and only names the next useful gesture.
 function openingHint(){
  const allies=E.alive(s,'ally');
- if(!allies.length)return '全員本城で待機中。城をタップして出撃！';
+ if(!allies.length)return '全員本城で待機中。城または「出撃可」をタップして部隊を選択。';
  if(s.map.id===0&&s.turn<=3){
   const ready=allies.filter(u=>!u.acted),specialist=u=>u.type==='shooter'||u.skill==='heal';
-  if(ready.some(u=>!specialist(u)))return '部隊から敵へスライドして離すと、そのまま攻撃。';
+  if(ready.some(u=>!specialist(u)))return '部隊から敵へスライド → 予測を確認して「攻撃」。';
   if(ready.some(specialist))return '砲兵・魔術師は動かずに待機すると、P3で支援。';
  }
  return '部隊を動かすか、本城から追加出撃。';
@@ -318,8 +318,6 @@ function beginMapGesture(clientX,clientY){
  const fromChosenEndpoint=before.route?.length>1&&before.dest&&E.key(p)===E.key(before.dest);
  let anchor=before.route?.length>1&&(same||fromChosenEndpoint)?{dest:before.dest,route:before.route}:null;
  const existingArrow=!!anchor;
- // No enemy-start or unrelated-cell gesture is a direct attack confirmation.
- const directAttackGesture=!!(pressed?.team==='ally'&&!pressed.acted||destinationPress||fromChosenEndpoint||sortieOrigin);
  const unitOrigin=directMove&&pressed?.team==='ally'&&!pressed.acted;
  if(pressed?.team==='ally'&&!pressed.acted){u=pressed;if(!anchor)selectUnit(u);}
  else if(!ready||(!destinationPress&&pressed?.team!=='enemy'&&!sortieOrigin&&!anchor))return {pan:true,tap:()=>{if(ready)cancelDraft();else mapTap(clientX,clientY);}};
@@ -386,9 +384,8 @@ function beginMapGesture(clientX,clientY){
   // Classify release while the lock is still armed; no command can fire on cancel.
   const quick=hold.armed,stay=stayArmed;clearTimeout(stayTimer);update(x,y,true);stopPaint();
   view.dragging=false;view.destinationPress=false;view.moveArmed=false;hold.reset();
-  // A deliberate enemy release is the confirmation: no 200ms hold and no
-  // second attack button. Engine legality is still checked inside commit().
-  if(enemy&&view.target&&!view.invalid&&!view.attackError&&directAttackGesture){commit('attack');return;}
+  // Release chooses the target only. Read the forecast, then Attack commits exactly once.
+  if(enemy&&view.target&&!view.invalid&&!view.attackError){openDraft();return;}
   if(unitOrigin&&!view.invalid&&!view.attackError&&!view.target){
    if(stay&&E.dist(view.dest,u)===0){commit('wait');return;}
    if(!enemy&&E.dist(view.dest,u)>0&&E.key(view.dest)===E.key(point)){commit('wait');return;}
@@ -399,7 +396,7 @@ function beginMapGesture(clientX,clientY){
   }
   if(view.invalid||(destinationPress&&!existingArrow&&!view.target&&!view.attackError)){sound.play('cancel');restore();return;}
   // A clean drag starting at the castle confirms move+wait directly.
-  // Enemy release has already committed above, including a legal sortie attack.
+  // Enemy release opens a forecast above, including a legal sortie attack.
   if(sortieOrigin&&view.sortie&&!view.target&&!view.attackError&&E.dist(view.dest,u)>0){commit('wait');return;}
   openDraft();
  };

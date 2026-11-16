@@ -42,8 +42,8 @@ try{
  assert.deepEqual((await t.draft()).route,arrow.route);assert.deepEqual(await t.state(),s);assert.deepEqual(await t.camera(),camera);
  await page.screenshot({path:'test-results/position22-range-390.png'});
  const expected=structuredClone(s);assert(E.act(expected,'a',dest,'attack','e').ok);
- await t.slide(dest,{x:6,y:14});await t.settled();
- assert.deepEqual(await t.state(),expected,'enemy release from a fixed route attacks without command menu');
+ await t.slide(dest,{x:6,y:14});assert.deepEqual(await t.state(),s,'enemy release leaves the command unspent');await page.locator('#attackOrder').click();await t.settled();
+ assert.deepEqual(await t.state(),expected,'one Attack choice uses the fixed route');
  await page.reload();await page.waitForFunction(()=>!!window.srpgDebug);assert.deepEqual(await t.state(),expected);
  // An adjacent bow error must not silently switch to the other, legal enemy.
  const bow=fixture('bow');await t.reset(bow);await t.slide(origin,dest);await t.slide(dest,{x:6,y:14});
