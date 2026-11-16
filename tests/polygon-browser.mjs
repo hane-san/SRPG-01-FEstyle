@@ -105,7 +105,8 @@ try{
  const cdp=await animated.newCDPSession(moving),point=p=>moving.locator('#battlefield').evaluate((c,p)=>{const r=c.getBoundingClientRect(),t=r.width/window.srpgDebug.snapshot().map.w;return {x:r.left+(p.x+.5)*t,y:r.top+(p.y+.5)*t};},p);
  const touch=(type,p)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:p?[{...p,id:1,radiusX:2,radiusY:2,force:1}]:[]});
  await touch('touchStart',await point(untouched.map.camp));await touch('touchMove',await point(dest));await moving.waitForTimeout(250);
- await touch('touchMove',await point(target));await touch('touchEnd'); // Releasing over the enemy commits directly (#77).
+ await touch('touchMove',await point(target));await touch('touchEnd');
+ assert.deepEqual(await moving.evaluate(()=>window.srpgDebug.snapshot()),untouched,'3D forecast remains uncommitted');await moving.locator('#attackOrder').click(); // Explicit Attack commits before context loss.
  await moving.waitForFunction(()=>window.srpgDebug.busy());await moving.evaluate(()=>window.srpgDebug.losePolygon());
  await moving.waitForFunction(()=>!window.srpgDebug.busy(),null,{timeout:20000});
  assert.deepEqual(await moving.evaluate(()=>window.srpgDebug.snapshot()),resolved,'context loss cannot lose a committed attack');

@@ -52,7 +52,12 @@ export function createPlayback({hitProfile=()=>'current',getState,setState,view,
     const weapon=weaponProfile(actor?.type||'shooter',{fast:isFast(),reduced:isReduced()});
     const hitMode=hitProfile(),striking=['impact','halves'].includes(hitMode);
     if(hitMode==='halves'&&!heal&&!isFast()&&!isReduced()&&!document.hidden){
-     view.combatHp={units:[actor,target].filter(Boolean).map(u=>({...u})),target:target.id,pendingEnd:null};
+     const participants=[actor,target].filter(Boolean),pair=view.combatHp;
+     // Attack and counter are one confrontation. Keep each HP plate attached to
+     // the same participant, rather than reversing the plates with the actors.
+     const samePair=pair&&pair.units.length===participants.length&&pair.units.every(u=>participants.some(p=>p.id===u.id));
+     const ordered=samePair?pair.units.map(u=>participants.find(p=>p.id===u.id)):participants.sort((a,b)=>Number(a.team==='enemy')-Number(b.team==='enemy'));
+     view.combatHp={units:ordered.map(u=>({...u})),target:target.id,pendingEnd:null};
     }
     if(!heal)sound.play(striking?'combat-windup':['bow','shooter'].includes(actor?.type)?'bow':actor?.type==='mage'?'magic':ranged?'range':'swing',event.amount,false,{type:actor?.type});
 

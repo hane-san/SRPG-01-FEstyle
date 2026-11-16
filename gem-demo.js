@@ -1,5 +1,5 @@
-import {hpHalves} from './hp-jewels.js?v=half113';
-import {createPlayback} from './playback.js?v=half113';
+import {hpHalves} from './hp-jewels.js?v=half113-mobileaudit116';
+import {createPlayback} from './playback.js?v=half113-mobileaudit116';
 
 const scenarios=[
  {label:'1ダメージ',start:6,amount:1},

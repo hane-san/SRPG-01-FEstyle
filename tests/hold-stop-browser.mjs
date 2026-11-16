@@ -43,7 +43,7 @@ try{
    await t.slide(origin,firing);assert.deepEqual((await t.draft()).dest,firing);
    await t.slide(firing,passing,{end:false});await page.waitForTimeout(320);
    assert.deepEqual((await t.draft()).dest,firing,'continuing an already drawn route keeps its explicit firing point, even during a pause');
-   await t.touch('touchMove',[await t.point({x:5,y:13})]);await t.touch('touchEnd',[]);await t.settled();
+   await t.touch('touchMove',[await t.point({x:5,y:13})]);await t.touch('touchEnd',[]);assert.deepEqual(await t.state(),bow,'ranged release is a forecast');await page.locator('#attackOrder').click();await t.settled();
    const fired=structuredClone(bow);assert(E.act(fired,'a',firing,'attack','e').ok);assert.deepEqual(await t.state(),fired);
   }
   assert.deepEqual(t.errors,[]);results.push({width,height,slowSlide:true,tremor:true,correction:true,undo:true,cancel:true});await t.context.close();

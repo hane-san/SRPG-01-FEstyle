@@ -1,6 +1,6 @@
 import {paintFantasyTerrain,paintFantasyCamp,FANTASY_COLORS,paintThemedUnit} from './fantasy-theme.js?v=trial90-art97';
 import {polygonFrame} from './polygon-renderer.js?v=polygon109-figure111-half113';
-import {paintHpJewels,combatHpLayout} from './hp-jewels.js?v=half113';
+import {paintHpJewels,combatHpLayout} from './hp-jewels.js?v=half113-mobileaudit116';
 import {LURE_WAKE,mixedRole} from './trial-profiles.js?v=mixed107-figure111-half113';
 import {paintIndustrialTerrain,paintIndustrialCamp,INDUSTRIAL_COLORS} from './sample-theme.js?v=sample76-art97';
 import {weaponFrame,bossFracture,isBossUnit} from './weapon-fx.js?v=0.8.0-weapon48';
@@ -301,9 +301,9 @@ function drawGemFragments(c,u,frame){
 // Issue #101: the number appears alone above the unit, then rises a little and fades.
 function drawDamageNumber(c,s,e,card=null){
  const pop=Math.min(1,e.pop??1),size=Math.round(12+6*Math.sin(Math.min(1,pop*1.4)*Math.PI/2));
- const x=card?card.x+card.w-16:Math.max(14,Math.min(s.map.w*32-14,e.x*32+16)),y=card?card.y+25:Math.max(14,e.y*32-19-e.progress*10);
- c.save();c.globalAlpha=Math.max(0,1-Math.max(0,e.progress-.35)*1.6);c.font=`bold ${card?14:size}px system-ui`;c.textAlign='center';
- c.lineWidth=4;c.strokeStyle='#132b32';c.fillStyle=e.heal?'#b8ffd0':'#fff2c2';c.strokeText(e.text,x,y);c.fillText(e.text,x,y);c.restore();
+ const x=card?card.x+card.w-25*card.scale:Math.max(14,Math.min(s.map.w*32-14,e.x*32+16)),y=card?card.y+40*card.scale:Math.max(14,e.y*32-19-e.progress*10);
+ c.save();c.globalAlpha=Math.max(0,1-Math.max(0,e.progress-.35)*1.6);c.font=`bold ${card?18*card.scale:size}px system-ui`;c.textAlign='center';
+ c.lineWidth=card?3*card.scale:4;c.strokeStyle='#132b32';c.fillStyle=e.heal?'#b8ffd0':'#fff2c2';c.strokeText(e.text,x,y);c.fillText(e.text,x,y);c.restore();
 }
 // Issue #101: while gems break, the HP row is shown enlarged on a plate just above the unit,
 // clamped inside the map so edges never cut it off; one lost gem breaks per beat.
@@ -316,12 +316,12 @@ function drawGemCloseUp(c,s,u,frame){
  drawHalfFragments(c,{x:left+4,y:top+3},frame,12,1);
  c.restore();
 }
-function drawHalfFragments(c,origin,frame,size=12,gap=3){
+function drawHalfFragments(c,origin,frame,size=12,gap=3,scale=1){
  if(!frame||frame.index<0||frame.heal||frame.progress>=1)return;
  const p=frame.progress,x=origin.x+Math.floor(frame.index/2)*(size+gap)+(frame.index%2?.75:.25)*size,y=origin.y+size/2;
  c.save();c.globalAlpha=1-p;
  for(let k=0;k<5;k++){
-  const a=k*Math.PI*2/5+.4,r=1+p*9;c.fillStyle=k%2?'#fff1d6':'#ffd0ac';
+  const a=k*Math.PI*2/5+.4,r=(1+p*9)*scale;c.fillStyle=k%2?'#fff1d6':'#ffd0ac';
   c.beginPath();c.moveTo(x+Math.cos(a)*r,y+Math.sin(a)*r-2);c.lineTo(x+Math.cos(a)*r+2,y+Math.sin(a)*r);c.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r+2);c.closePath();c.fill();
  }
  c.restore();
@@ -334,11 +334,14 @@ function drawCombatHp(c,s,view){
   c.strokeStyle=ally?'#8bb9db':'#e7a594';c.lineWidth=.7;
   c.beginPath();c.moveTo(card.x+card.w/2,card.y+card.h);c.lineTo(u.x*32+16,u.y*32+2);c.stroke();
   c.fillStyle='#15202af5';c.fillRect(card.x,card.y,card.w,card.h);c.lineWidth=1;c.strokeRect(card.x+.5,card.y+.5,card.w-1,card.h-1);
-  c.fillStyle=ally?'#b9ddfa':'#ffccb8';c.font='bold 7px system-ui';c.textAlign='left';c.fillText(`${ally?'味':'敵'} ${u.name}`,card.x+4,card.y+9,card.w-8);
-  const origin={x:card.x+5,y:card.y+13};
-  paintHpJewels(c,{...origin,hp,pendingEnd:frame?.pendingEnd??hp,size:12,gap:3,ally,lowHp:view.lowHp});
-  drawHalfFragments(c,origin,frame);
-  c.fillStyle='#f1e9d5';c.font='7px system-ui';c.fillText(`HP ${hp}/6${hp===0?' · '+(ally?'離脱':'撃破'):''}`,card.x+5,card.y+33,card.w-10);
+  const scale=card.scale;
+  c.fillStyle=ally?'#b9ddfa':'#ffccb8';c.font=`bold ${12*scale}px system-ui`;c.textAlign='left';c.fillText(`${ally?'味方':'敵'} ${u.name}`,card.x+8*scale,card.y+16*scale,card.w-16*scale);
+  const origin={x:card.x+8*scale,y:card.y+26*scale};
+  paintHpJewels(c,{...origin,hp,pendingEnd:frame?.pendingEnd??hp,size:14*scale,gap:3*scale,ally,lowHp:view.lowHp});
+  // The fragments belong to the gem row; they never cover current HP or the damage number.
+  c.save();c.beginPath();c.rect(origin.x-3*scale,origin.y-4*scale,54*scale,22*scale);c.clip();
+  drawHalfFragments(c,origin,frame,14*scale,3*scale,scale);c.restore();
+  c.fillStyle='#f1e9d5';c.font=`bold ${14*scale}px system-ui`;c.fillText(`HP ${hp}/6${hp===0?' · '+(ally?'離脱':'撃破'):''}`,card.x+8*scale,card.y+58*scale,card.w-16*scale);
   c.restore();
  }
  return cards;

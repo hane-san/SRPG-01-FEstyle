@@ -420,3 +420,13 @@ footer button{font-size:12px}
 .unit-name small{font-size:11px}
 /* Landscape phones: the footer shares the 300px dock column, so its buttons keep their original size. */
 @media(max-height:500px) and (min-width:600px){footer button{font-size:11px}}
+
+/* Mobile play audit: identity and exact predicted remainder fit the existing fixed dock. */
+#commandDock #orders .combat-forecast .forecast-side{grid-template-rows:16px 18px 8px 17px;gap:0}
+#commandDock #orders .combat-forecast .forecast-name{font-size:14px;line-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#commandDock #orders .combat-forecast .forecast-side small{font-size:14px;line-height:17px}
+#commandDock #orders .combat-forecast .forecast-side .hp-track{height:8px}
+#commandHint .route-readout{white-space:pre-line;line-height:1.3}
+
+/* A combat HP plate owns this space while orders are locked. Restore navigation after playback. */
+.map-wrap[data-combat-hp="true"] #minimap,.map-wrap[data-combat-hp="true"] .map-tools,.map-wrap[data-combat-hp="true"] #moveUndo{visibility:hidden}

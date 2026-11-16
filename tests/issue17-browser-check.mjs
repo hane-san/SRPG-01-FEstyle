@@ -12,8 +12,8 @@ try{
  const origin={x:4,y:16},dest={x:5,y:14};
  const arrow=async()=>{await t.reset(s);await t.slide(origin,dest);return t.draft();};
  const intended=structuredClone(s);assert(E.act(intended,'a',dest,'attack','e').ok);
- // Issue #35: an explicitly drawn endpoint is now a confirmation source,
- // not just a menu preview. Keyboard attempts during a held gesture still fail.
+ // An explicitly drawn endpoint is retained into the forecast; only Attack commits.
+ // Keyboard attempts during a held gesture still fail.
  for(const [label,start]of [['endpoint',dest],['original unit',origin]]){
   const before=await arrow(),camera=await t.camera();
   await t.touch('touchStart',[await t.point(start)]);
@@ -24,10 +24,10 @@ try{
   check(JSON.stringify(held.dest)===JSON.stringify(before.dest),'exact attack route preserved while held: '+label);
   await page.keyboard.press('w');
   check((await t.state()).metrics.commands===0,'held keyboard cannot commit: '+label);
-  await t.touch('touchEnd',[]);await t.settled();
-  check(JSON.stringify(await t.state())===JSON.stringify(intended),'enemy release commits exact chosen route: '+label);
+  await t.touch('touchEnd',[]);check(JSON.stringify(await t.state())===JSON.stringify(s),'enemy release opens a non-consuming forecast: '+label);await page.locator('#attackOrder').click();await t.settled();
+  check(JSON.stringify(await t.state())===JSON.stringify(intended),'Attack commits exact chosen route: '+label);
   check(JSON.stringify(await t.camera())===JSON.stringify(camera),'stable camera: '+label);
-  check((await t.state()).metrics.commands===1,'flick commits only one action: '+label);
+  check((await t.state()).metrics.commands===1,'Attack commits only one action: '+label);
  }
  // A different reachable tile must not silently reuse an earlier attack origin;
  // an unreachable empty tile is map panning, never a combat command.
